@@ -1,0 +1,7 @@
+# Ignore node_modules and temp files (this project uses no build step)
+node_modules/
+.*.swp
+*~
+*.log
+dist/
+.DS_Store

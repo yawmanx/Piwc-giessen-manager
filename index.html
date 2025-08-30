@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PIWC Gießen — Church Manager</title>
+<style>
+  :root{
+    --blue:#0b4fb3; --yellow:#ffd200; --red:#e53935;
+    --ink:#17324d; --ink-soft:#3e5a7a;
+    --bg:#f6f9ff; --card:#ffffff; --muted:#eef3ff;
+    --shadow:0 12px 40px rgba(11,79,179,0.15);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at -10% -10%, rgba(255,210,0,.25), transparent 60%),
+      radial-gradient(900px 600px at 110% 10%, rgba(11,79,179,.18), transparent 60%),
+      linear-gradient(180deg,#fff,#f8fbff 60%,#f2f7ff 100%);
+  }
+
+  .app{
+    display:grid;grid-template-columns:280px 1fr;grid-template-rows:72px 1fr;
+    grid-template-areas:"nav header" "nav main";min-height:100vh;
+  }
+  header{
+    grid-area:header;display:flex;align-items:center;justify-content:space-between;
+    padding:12px 20px 12px 8px;
+    background:linear-gradient(120deg,var(--blue) 0%, #2563eb 45%, #3b82f6 100%);
+    color:#fff;position:sticky;top:0;z-index:5;box-shadow:0 4px 18px rgba(0,0,0,.12);
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .crest{
+    width:44px;height:44px;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:#fff;
+    box-shadow: inset 0 0 0 4px rgba(255,255,255,.35), 0 6px 14px rgba(0,0,0,.2);
+  }
+  .crest img{width:100%;height:100%;object-fit:cover}
+  .crest.fallback{
+    background:conic-gradient(from 210deg, var(--yellow) 0 35%, #fff 0 36%, var(--blue) 0 70%, var(--red) 0 100%);
+  }
+  .actions{display:flex;gap:10px;align-items:center}
+  .btn{border:none;cursor:pointer;padding:10px 14px;border-radius:12px;font-weight:600;background:#fff;color:var(--blue);box-shadow:0 6px 16px rgba(0,0,0,.12)}
+  .btn.primary{background:var(--yellow);color:#1c1917}
+  .btn.red{background:var(--red);color:#fff}
+  .btn.ghost{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35)}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+
+  nav{
+    grid-area:nav;background:linear-gradient(180deg,#0b3f9f 0%, #0a357f 40%, #092964 100%);
+    color:#dbe8ff;padding:16px 12px 20px;border-right:1px solid rgba(255,255,255,.12);
+  }
+  .church-title{display:flex;gap:10px;align-items:center;padding:12px;border-radius:14px;background:rgba(255,255,255,.08);margin-bottom:12px}
+  .church-title .dot{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #fff, var(--yellow));box-shadow:0 0 0 3px rgba(255,255,255,.18)}
+  .menu{display:grid;gap:6px;margin-top:4px}
+  .menu button{width:100%;text-align:left;padding:12px;border:none;border-radius:12px;background:transparent;color:#e7f0ff;cursor:pointer;font-weight:600}
+  .menu button:hover{background:rgba(255,255,255,.08)}
+  .menu button.active{background:linear-gradient(90deg,var(--yellow) 0%, #ffe568 100%); color:#1e293b}
+
+  main{grid-area:main;padding:22px;display:grid;gap:18px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+  .grid{display:grid;gap:16px}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr)}
+  @media (max-width:1100px){ .grid.cols-2,.cols-3,.cols-4{grid-template-columns:1fr} }
+
+  h2{margin:0 0 10px 0;font-size:20px}
+  h3{margin:0 0 8px 0;font-size:16px;color:#3e5a7a}
+  label{display:block;margin:6px 0 6px 2px;font-size:12px;color:#4a6382}
+  input,select,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #ccdaff;background:#fff;outline:none;color:#17324d;font-size:14px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .row .grow{flex:1}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#eef5ff;color:#17324d;font-weight:700}
+
+  table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  thead th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5a7496;text-align:left;padding:6px 10px}
+  tbody tr{background:#fff;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.05)}
+  tbody td{padding:12px 10px;border-top:1px solid #edf2ff;border-bottom:1px solid #edf2ff}
+  tbody tr td:first-child{border-left:1px solid #edf2ff;border-top-left-radius:12px;border-bottom-left-radius:12px}
+  tbody tr td:last-child{border-right:1px solid #edf2ff;border-top-right-radius:12px;border-bottom-right-radius:12px}
+  .table-actions{display:flex;gap:6px}
+
+  .denoms{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .denom{background:var(--muted);padding:8px;border-radius:12px;border:1px dashed #c7d8ff}
+  .denom .row{justify-content:space-between}
+  .denom .tag{font-weight:800}
+  .denom input{width:90px}
+
+  .cash-table{width:100%;border-collapse:collapse;margin-top:8px}
+  .cash-table th,.cash-table td{border:1px solid #e2e8ff;padding:8px;border-radius:0;background:#fff}
+  .cash-table tfoot td{font-weight:800}
+  .canvas-wrap{padding:8px;border-radius:16px;background:linear-gradient(180deg,#fff,#f9fbff);border:1px solid #e6eeff}
+
+  @media print{
+    header, nav, .no-print, .hero .right, .controls {display:none !important}
+    main{padding:0}
+    .card{box-shadow:none;border:none}
+    .print-area{margin:0;padding:0}
+    body{background:#fff}
+    .cash-table th,.cash-table td{border:1px solid #000}
+    .lined td{border:1px solid #000}
+  }
+
+  .muted{color:#6b86a8}.small{font-size:12px}.right-align{text-align:right}
+
+  /* Login page styles */
+  #loginPage{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,var(--bg),#e7f0ff);
+    z-index:1000;
+  }
+  #loginPage .login-card{
+    background:#ffffff;padding:24px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.15);
+    width:320px;max-width:90%;
+  }
+  #loginPage h2{margin-top:0;margin-bottom:12px;font-size:22px;color:var(--ink);}
+  #loginPage input{
+    width:100%;margin-bottom:12px;padding:10px;border-radius:10px;
+    border:1px solid #ccdaff;font-size:14px;
+  }
+  #loginPage .btn{
+    width:100%;display:block;
+  }
+  #loginError{
+    color:var(--red);font-size:12px;margin-top:4px;
+    display:none;
+  }
+</style>
+</head>
+<body>
+<div id="loginPage">
+  <div class="login-card">
+    <h2 id="loginTitle">Login</h2>
+    <input id="loginUser" placeholder="Username">
+    <input id="loginPass" type="password" placeholder="Password">
+    <button class="btn primary" id="loginButton">Login</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+<div class="app" style="display:none">
+  <nav>
+    <div class="church-title">
+      <div class="dot"></div>
+      <div>
+        <div style="font-weight:800;letter-spacing:.02em">PIWC Gießen</div>
+        <div class="small" style="opacity:.85">Church Manager</div>
+      </div>
+    </div>
+    <div class="menu" id="menu"></div>
+    <div class="card" style="margin-top:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff">
+      <h3 style="color:#fff">Quick Tips</h3>
+      <ul class="small" style="margin:8px 0 0 16px;line-height:1.5">
+        <li>Upload crest & hero photo in <b>Settings</b>.</li>
+        <li>Enter contributions with denominations. Save a <b>Cash Count</b> for each service.</li>
+        <li>Monthly Remittance pulls totals automatically from your saved Cash Count sessions.</li>
+      </ul>
+    </div>
+  </nav>
+
+  <header>
+    <div class="brand">
+      <div class="crest fallback" id="crestTop"></div>
+      <div>
+        <h1 id="hdrChurchName">PIWC Gießen <small>Stewardship & Records</small></h1>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost no-print" id="gotoSettingsBtn">Settings</button>
+      <button class="btn no-print" id="exportDataBtn">Backup (JSON)</button>
+      <button class="btn no-print" id="importDataBtn">Restore (JSON)</button>
+      <!-- Added buttons for optional Supabase cloud sync -->
+      <button class="btn no-print" id="cloudBackupBtn">Backup in Cloud</button>
+      <button class="btn no-print" id="cloudLoadBtn">Load from Cloud</button>
+      <button class="btn red no-print" id="resetBtn" title="Clear all data (local)">Reset</button>
+  <button class="btn ghost no-print" id="logoutBtn">Log Out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Dashboard -->
+    <section id="page-dashboard" class="page">
+      <div class="card hero" id="heroCard">
+        <div class="hero-inner">
+          <div>
+            <h2 id="heroTitle">Welcome to PIWC Gießen Manager</h2>
+            <div class="sub">Keep membership, income, and expenses organized. Print tax statements with one click.</div>
+          </div>
+          <div class="right">
+            <span class="badge">Yellow • Blue • <span style="color:var(--red)">Red</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-3">
+        <div class="card"><h3>Members</h3><div class="row"><span class="badge" id="statMembers">0</span></div><div class="muted small">Active in database</div></div>
+        <div class="card"><h3>Total Income (This Year)</h3><div class="row"><span class="badge" id="statIncome">€ 0,00</span></div><div class="muted small">Tithes • Offerings • Special • Bus • Movement</div></div>
+        <div class="card"><h3>Total Expenses (This Year)</h3><div class="row"><span class="badge" id="statExpenses">€ 0,00</span></div><div class="muted small">Building • Maintenance • Car • Food • Bank • …</div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card"><h3>Income vs Expenses (Last 12 months)</h3><div class="canvas-wrap"><canvas id="barIE" width="900" height="300"></canvas></div></div>
+        <div class="card"><h3>Category Breakdown (YTD)</h3><div class="canvas-wrap"><canvas id="barCats" width="900" height="300"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- Members -->
+    <section id="page-members" class="page" hidden>
+      <div class="grid cols-2">
+        <div class="card">
+          <h2>Add Member</h2>
+          <div class="grid">
+            <div><label>Full name</label><input id="mName" placeholder="e.g., Ama Boateng" /></div>
+            <div class="grid cols-2">
+              <div><label>Phone</label><input id="mPhone" placeholder="+49 …" /></div>
+              <div><label>Email</label><input id="mEmail" type="email" placeholder="name@example.com" /></div>
+            </div>
+            <div><label>Address</label><input id="mAddress" placeholder="Street, City" /></div>
+            <div class="row"><button class="btn primary" id="addMemberBtn">Add Member</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <h2>Member List</h2>
+            <div class="row">
+              <input id="memberSearch" placeholder="Search member…" />
+              <button class="btn" id="exportMembersCsvBtn">Export CSV</button>
+            </div>
+          </div>
+          <div style="overflow:auto;max-height:60vh">
+            <table>
+              <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th></th></tr></thead>
+              <tbody id="membersTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Combined: Contributions + Cash Count -->
+    <section id="page-contribs" class="page" hidden>
+      <div class="grid cols-2">
+        <!-- Add Contribution -->
+        <div class="card">
+          <h2>Contributions</h2>
+          <div class="grid cols-4">
+            <!-- NEW: Member search for Tithe/Offering -->
+            <div id="memberPickerWrap" style="display:none">
+              <label>Payer (Member)</label>
+              <input id="cMemberSearch" placeholder="Type to search member…" list="dlMembers" />
+              <datalist id="dlMembers"></datalist>
+              <div class="small muted">Pick from your Members list. Leave blank to record as General/Anonymous.</div>
+            </div>
+
+            <div>
+              <label>Category</label>
+              <select id="cCategory">
+                <option value="Tithe">Tithe</option>
+                <option value="Offering">Offering</option>
+                <option value="Special Offering">Special Offering</option>
+                <option value="Bus Contribution">Bus Contribution</option>
+                <option value="Movement Contribution">Movement Contribution</option>
+              </select>
+            </div>
+            <div><label>Date</label><input id="cDate" type="date" /></div>
+            <div><label>Notes (optional)</label><input id="cNotes" placeholder="e.g., Youth Sunday" /></div>
+            <div><label>Donor name (optional)</label><input id="cDonor" placeholder="If not selecting a member" /></div>
+            <div><label>Recorded by <span class="small muted">(required for non-tithe/offering)</span></label><input id="cRecordedBy" placeholder="Finance officer name" /></div>
+          </div>
+          <div style="margin-top:10px">
+            <h3>Denominations (EUR)</h3>
+            <div class="denoms" id="denoms"></div>
+          </div>
+          <div class="row" style="margin-top:10px;justify-content:space-between">
+            <div class="badge">Computed Total: <span id="cTotal">€ 0,00</span></div>
+            <div class="row">
+              <button class="btn primary" id="addContributionBtn">Add Contribution</button>
+              <button class="btn" id="clearDenomsBtn">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Derived Cash Count (auto from contributions) -->
+        <div class="card">
+          <h2>Cash Count (auto from contributions)</h2>
+          <div class="grid cols-4">
+            <div><label>Service Date</label><input type="date" id="cc2Date"></div>
+            <div><label>Service Label</label><input id="cc2Label" placeholder="Sunday Service"></div>
+            <div><label>Prepared by</label><input id="cc2Prepared" placeholder="Finance Secretary"></div>
+            <div><label>Approved by</label><input id="cc2Approved" placeholder="Presiding Elder/Ministry"></div>
+            <div><label>Received by</label><input id="cc2Received" placeholder="Treasurer"></div>
+          </div>
+          <div class="row small" style="margin-top:6px">
+            <label><input type="checkbox" id="ccIncTithe" checked> Include Tithe</label>
+            <label><input type="checkbox" id="ccIncOffering" checked> Include Offering</label>
+            <label><input type="checkbox" id="ccIncSpecial"> Include Special Offering</label>
+          </div>
+
+          <table class="cash-table" id="cc2Table">
+            <thead><tr><th>NOTES / COINS</th><th class="right-align">QUANTITY</th><th class="right-align">EURO AMOUNT</th></tr></thead>
+            <tbody id="cc2Body"></tbody>
+            <tfoot>
+              <tr><td class="right-align">SUB-TOTAL (NOTES)</td><td></td><td class="right-align" id="cc2NotesSubtotal">€ 0,00</td></tr>
+              <tr><td class="right-align">SUB-TOTAL (COINS)</td><td></td><td class="right-align" id="cc2CoinsSubtotal">€ 0,00</td></tr>
+              <tr><td class="right-align">GRAND TOTAL CASH</td><td></td><td class="right-align" id="cc2Grand">€ 0,00</td></tr>
+            </tfoot>
+          </table>
+
+          <div class="row" style="margin-top:10px;justify-content:flex-end">
+            <button class="btn" id="cc2SaveBtn">Save Cash Count</button>
+            <button class="btn primary" id="cc2PrintBtn">Print Sheet</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lists -->
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <h3>Saved Cash Count Sessions</h3>
+          </div>
+          <div style="overflow:auto;max-height:50vh">
+            <table>
+              <thead><tr><th>Date</th><th>Label</th><th class="right-align">Total</th><th></th></tr></thead>
+              <tbody id="cc2SessionsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <h3>Contributions</h3>
+            <div class="row">
+              <input type="date" id="fFrom"><span class="muted small">to</span><input type="date" id="fTo">
+              <select id="fCat"><option value="">All categories</option></select>
+              <select id="fMem"><option value="">All members</option></select>
+              <button class="btn" id="exportContribCsvBtn">Export CSV</button>
+            </div>
+          </div>
+          <div style="overflow:auto;max-height:50vh">
+            <table>
+              <thead><tr><th>Date</th><th>Member/Donor</th><th>Category</th><th class="right-align">Amount</th><th>Recorded by</th><th>Notes</th><th></th></tr></thead>
+              <tbody id="contribsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Income Summary -->
+    <section id="page-income" class="page" hidden>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <h2>Income Summary</h2>
+          <div class="row">
+            <input type="date" id="iFrom"><span class="muted small">to</span><input type="date" id="iTo">
+            <button class="btn" id="exportIncomeCsvBtn">Export CSV</button>
+          </div>
+        </div>
+        <div style="overflow:auto;max-height:60vh">
+          <table>
+            <thead><tr><th>Category</th><th class="right-align">Total</th></tr></thead>
+            <tbody id="incomeTbody"></tbody>
+            <tfoot><tr><td style="text-align:right;font-weight:800">Grand Total</td><td class="right-align" id="incomeGrand">€ 0,00</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Expenses -->
+    <section id="page-expenses" class="page" hidden>
+      <div class="grid cols-2">
+        <div class="card">
+          <h2>Add Expense</h2>
+          <div class="grid">
+            <div class="grid cols-2">
+              <div>
+                <label>Category</label>
+                <select id="eCategory">
+                  <option>Building</option><option>Maintenance</option><option>Car Expenses</option><option>Food</option><option>Bank Expenses</option>
+                </select>
+              </div>
+              <div><label>Date</label><input id="eDate" type="date" /></div>
+            </div>
+            <div class="grid cols-2">
+              <div><label>Amount (€)</label><input id="eAmount" type="number" step="0.01" min="0" placeholder="0.00" /></div>
+              <div><label>Notes</label><input id="eNotes" placeholder="e.g., Fuel for church bus" /></div>
+            </div>
+            <div><button class="btn primary" id="addExpenseBtn">Add Expense</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <h2>Expenses</h2>
+            <div class="row">
+              <input type="date" id="eFrom"><span class="muted small">to</span><input type="date" id="eTo">
+              <select id="eCat"><option value="">All categories</option></select>
+              <button class="btn" id="exportExpensesCsvBtn">Export CSV</button>
+            </div>
+          </div>
+          <div style="overflow:auto;max-height:60vh">
+            <table>
+              <thead><tr><th>Date</th><th>Category</th><th class="right-align">Amount</th><th>Notes</th><th></th></tr></thead>
+              <tbody id="expensesTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Financial Overview -->
+    <section id="page-overview" class="page" hidden>
+      <div class="grid cols-2">
+        <div class="card"><h2>Financial Overview</h2><div id="overviewStats" class="grid"></div></div>
+        <div class="card"><h2>Monthly Flow (12 months)</h2><div class="canvas-wrap"><canvas id="flow12" width="900" height="300"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- Reports -->
+    <section id="page-reports" class="page" hidden>
+      <div class="card no-print controls">
+        <h2>Reports</h2>
+        <div class="grid cols-4">
+          <div><label>Member</label><select id="rMember"></select></div>
+          <div><label>From</label><input type="date" id="rFrom" /></div>
+          <div><label>To</label><input type="date" id="rTo" /></div>
+          <div class="row" style="align-items:flex-end">
+            <button class="btn" id="rExportCsvBtn">Download CSV</button>
+            <button class="btn primary" id="rPrintBtn">Print / Save as PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card print-area" id="reportArea">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div class="crest" style="width:60px;height:60px" id="crestReport"></div>
+          <div style="flex:1">
+            <h2 id="reportChurchName" style="margin:0">PIWC Gießen — Contribution Statement</h2>
+            <div class="small muted" id="reportChurchAddr"></div>
+            <div class="small muted">Tax ID: <span id="reportTaxId"></span></div>
+            <div class="small muted" id="reportRange" style="margin-top:4px"></div>
+          </div>
+          <div class="badge">Official Record</div>
+        </div>
+        <div id="reportMemberLine" class="small" style="margin:10px 0"></div>
+        <table>
+          <thead><tr><th>Date</th><th>Category</th><th>Notes</th><th class="right-align">Amount</th></tr></thead>
+          <tbody id="reportTbody"></tbody>
+          <tfoot><tr><td colspan="3" class="right-align" style="font-weight:800">Total</td><td class="right-align" id="reportTotal">€ 0,00</td></tr></tfoot>
+        </table>
+        <div class="row" style="margin-top:14px">
+          <div class="small muted">Generated on <span id="reportGenDate"></span>. Thank you for your faithful giving.</div>
+        </div>
+        <div style="height:60px"></div>
+        <div id="leadersBlock" class="small muted" style="display:grid;gap:6px"></div>
+        <div class="row" style="justify-content:space-between;margin-top:10px">
+          <div class="small muted">Prepared by: <span id="preparedByName"></span></div>
+          <div class="small muted">Signature: ____________________________</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Total Contributions (All Members)</h3>
+        <div class="row no-print" style="justify-content:space-between">
+          <div class="row"><input type="date" id="rtFrom"><span class="muted small">to</span><input type="date" id="rtTo"></div>
+          <div class="row">
+            <button class="btn" id="rtExportCsvBtn">Download CSV</button>
+            <button class="btn primary" id="rtPrintBtn">Print / Save as PDF</button>
+          </div>
+        </div>
+        <div id="totalPrintArea" class="print-area">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <h3 style="margin:0">Overall Income Summary</h3>
+            <div class="small muted" id="rtRange"></div>
+          </div>
+          <table>
+            <thead><tr><th>Category</th><th class="right-align">Total</th></tr></thead>
+            <tbody id="rtTbody"></tbody>
+            <tfoot><tr><td class="right-align" style="font-weight:800">Grand Total</td><td class="right-align" id="rtGrand">€ 0,00</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Monthly Remittance (separate page, auto from Cash Count sessions) -->
+    <section id="page-remittance" class="page" hidden>
+      <div class="card">
+        <h2>Monthly Remittance</h2>
+        <div class="grid cols-4">
+          <div><label>Month</label><select id="remMonth"></select></div>
+          <div><label>Year</label><select id="remYear"></select></div>
+          <div><label>Prepared by</label><input id="remPrepared" placeholder="Finance Secretary"></div>
+          <div><label>Approved by</label><input id="remApproved" placeholder="Presiding Elder/Ministry"></div>
+        </div>
+
+        <div class="row small" style="margin-top:6px">
+          <span class="muted">Autofill picks saved Cash Count sessions for the selected month where the session includes any of:</span>
+          <label><input type="checkbox" id="remUseTithe" checked> Tithe</label>
+          <label><input type="checkbox" id="remUseOffering" checked> Offering</label>
+          <label><input type="checkbox" id="remUseSpecial"> Special Offering</label>
+        </div>
+
+        <div class="grid cols-2" style="margin-top:10px">
+          <div class="card" style="padding:12px">
+            <h3>Cash Receipts (from Cash Count sessions)</h3>
+            <table class="cash-table lined">
+              <thead><tr><th>WEEK</th><th class="right-align">EURO</th><th class="right-align">CENT</th></tr></thead>
+              <tbody id="remWeeks"></tbody>
+              <tfoot><tr><td class="right-align">TOTAL TITHES AND OFFERING</td><td colspan="2" class="right-align" id="remTotalTO">€ 0,00</td></tr></tfoot>
+            </table>
+            <div class="row" style="margin-top:8px">
+              <button class="btn" id="remAutofillBtn">Autofill from Cash Sessions</button>
+            </div>
+          </div>
+
+          <div class="card" style="padding:12px">
+            <h3>Allowable Local Expenses Paid Out</h3>
+            <table class="cash-table lined">
+              <tbody id="remAllowables"></tbody>
+              <tfoot><tr><td class="right-align">TOTAL ALLOWABLES</td><td class="right-align" id="remTotalAllowables">€ 0,00</td></tr></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px">
+          <h3>Summary</h3>
+          <div class="grid cols-4">
+            <div class="row"><label>Development Fund %</label><input id="remDevPct" type="number" min="0" max="100" value="10"></div>
+            <div class="row"><label>Missionary Offering (€)</label><input id="remMission" type="number" step="0.01" value="0"></div>
+            <div class="row"><label>ADF (€)</label><input id="remAdf" type="number" step="0.01" value="0"></div>
+            <div class="row"><label>Pension Fund (€)</label><input id="remPension" type="number" step="0.01" value="0"></div>
+          </div>
+          <div class="grid cols-2" style="margin-top:10px">
+            <div class="card">
+              <div class="row"><div class="grow">Net after Allowables</div><div id="remNetAfter">€ 0,00</div></div>
+              <div class="row"><div class="grow">Less Local Development Fund</div><div id="remDevAmount">€ 0,00</div></div>
+              <div class="row"><div class="grow">Local Net Tithes to District</div><div id="remLocalNet">€ 0,00</div></div>
+              <div class="row"><div class="grow">Net Cash Sent to District</div><div id="remNetSent">€ 0,00</div></div>
+              <div class="small muted">Autofill sums the <b>saved Cash Count</b> totals per week. Adjust any numbers if needed.</div>
+            </div>
+          </div>
+
+          <div class="row" style="justify-content:flex-end">
+            <button class="btn" id="remSaveBtn">Save Monthly Summary</button>
+            <button class="btn" id="remExportBtn">Export CSV</button>
+            <button class="btn primary" id="remPrintBtn">Print / Save as PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Saved Monthly Remittances</h3>
+        <div style="overflow:auto;max-height:50vh">
+          <table>
+            <thead><tr><th>Month</th><th>Year</th><th class="right-align">Total T&O</th><th class="right-align">Net Sent</th><th></th></tr></thead>
+            <tbody id="remSavedTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Attendance -->
+    <section id="page-attendance" class="page" hidden>
+      <div class="card">
+        <h2>Sunday Service Attendance</h2>
+        <div class="row" style="gap:12px">
+          <div><label>Date</label><input id="attDate" type="date"></div>
+        </div>
+        <div id="attListContainer" style="margin-top:10px"></div>
+        <div class="row" style="justify-content:space-between; margin-top:10px">
+          <div>Total Present: <span id="attPresentCount">0</span> / <span id="attTotalMembersCount">0</span></div>
+          <div>
+            <button class="btn" id="attSaveBtn">Save Attendance</button>
+            <button class="btn" id="attPrintBtn">Print</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Attendance Records</h3>
+        <div style="overflow:auto; max-height:40vh">
+          <table class="cash-table lined">
+            <thead><tr><th>Date</th><th class="right-align">Present</th><th></th></tr></thead>
+            <tbody id="attSummaryTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Statistics</h3>
+        <div id="attStats"></div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="page-settings" class="page" hidden>
+      <div class="grid cols-2">
+        <div class="card">
+          <h2>Church Details</h2>
+          <div class="grid">
+            <div><label>Church name</label><input id="sChurchName" /></div>
+            <div><label>Address</label><input id="sAddress" /></div>
+            <div><label>Tax ID (Steuernummer)</label><input id="sTaxId" /></div>
+            <div class="row">
+              <input class="no-print" type="file" id="sCrestUpload" accept="image/*" style="display:none" />
+              <button class="btn" id="sCrestBtn">Upload Crest/Logo</button>
+              <button class="btn" id="sHeroBtn">Upload Hero Photo</button>
+              <input class="no-print" type="file" id="sHeroUpload" accept="image/*" style="display:none" />
+              <button class="btn red" id="sClearCrestBtn">Remove Crest</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Leadership</h2>
+          <div id="leadersList" class="grid"></div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn" id="addLeaderBtn">Add Role</button>
+            <button class="btn primary" id="saveSettingsBtn">Save Settings</button>
+          </div>
+          <div class="small muted" style="margin-top:6px">Leaders appear on the printed statements; “Prepared by” uses the first leader with role containing “Finance” or the first leader if none.</div>
+        </div>
+      </div>
+
+      <!-- Account credentials update -->
+      <div class="card" style="margin-top:16px">
+        <h2>Account</h2>
+        <div class="grid">
+          <div>
+            <label>Username</label>
+            <input id="accountUsername" placeholder="Username">
+          </div>
+          <div>
+            <label>Password</label>
+            <input id="accountPassword" type="password" placeholder="New password">
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn primary" id="changeCredsBtn">Change Credentials</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/*** STORAGE KEYS ***/
+const LS_KEYS = {
+  members: 'piwc_members',
+  contribs: 'piwc_contributions',
+  expenses: 'piwc_expenses',
+  hero: 'piwc_hero_img',
+  settings: 'piwc_settings',
+  cashcounts: 'piwc_cash_counts',
+  remits: 'piwc_monthly_remits'
+  ,attendance: 'piwc_attendance'
+};
+
+/*** CONSTANTS ***/
+const INCOME_CATS = ["Tithe","Offering","Special Offering","Bus Contribution","Movement Contribution"];
+const EXPENSE_CATS = ["Building","Maintenance","Car Expenses","Food","Bank Expenses"];
+const DENOMS = [
+  {label:"€500", cents:50000},{label:"€200", cents:20000},{label:"€100", cents:10000},{label:"€50", cents:5000},
+  {label:"€20", cents:2000},{label:"€10", cents:1000},{label:"€5", cents:500},{label:"€2", cents:200},
+  {label:"€1", cents:100},{label:"€0.50", cents:50},{label:"€0.20", cents:20},{label:"€0.10", cents:10},
+  {label:"€0.05", cents:5},{label:"€0.02", cents:2},{label:"€0.01", cents:1}
+];
+
+/*** AUTH & DEFAULT MEMBERS ***/
+// Keys used for storing credentials and login state
+const AUTH_KEYS = {
+  creds: 'piwc_user_creds',
+  loggedIn: 'piwc_logged_in'
+};
+// Default list of members extracted from the provided PDF. These names will be populated
+// into the members list on first load if no members exist.
+const DEFAULT_MEMBERS = [
+  "Dns Angela","Sis Diana","Sis Faouziah","Sis Lola","Mama Mary","Sis Larinette",
+  "Sis Marianna","Sis Michelle","Sis Marie","Sis Nice","Sis Omo (Dino's wife)",
+  "Sis Eunice","Aunty Janet","Sis Blessing","Dcns Juliet","Sis Izzy Mbunya",
+  "Sis Gloria","Sis Irene","Sis Bose","Sis Ify","Sister Omor","Sis Stacey","Sis Thelma",
+  "Dcns Nana","Sis Folashade","Victoria","Michaela","Elizabeth (Marianna's sis)",
+  "Evangelist Itoha","Fan D. Glory","Jervie","Elizubuth G Mbunzu",
+  "Elder Evans","Elder Edward","Bro Obi","Dcn Segun","Bro Kelly","Bro Kelvin",
+  "Bro Chukwuma","Dcn Asante","Dr. Emmanuel","Bro Joseph","Mr. Bonney","Mr. Mbungu",
+  "Bro Solomon","Bro Stephen","Elder Yaw","Bro Francis","Bro Gbenga","Bro Donald",
+  "Werner","Bro Roger","Bro Dino","Bro Emeka","Emmanuel","Divine",
+  "Freddy Mbunzu","Zadoki Steven","Floyd","Pastor Boamah","Bro. Sebastien",
+  "Anciete Francis Udo","Pastor Isac Danquah","Pembele Mbungu"
+];
+
+// Populate default members if the members list is empty. This runs during auth init.
+function ensureDefaultMembers(){
+  try{
+    if(!Array.isArray(state.members) || state.members.length===0){
+      DEFAULT_MEMBERS.forEach(n=>{
+        state.members.push({id:id(), name:n, phone:"", email:"", address:""});
+      });
+      saveState();
+    }
+  }catch(e){
+    console.error(e);
+  }
+}
+
+/*** STATE ***/
+const state = {
+  members: [],
+  contribs: [],
+  expenses: [],
+  hero: "",
+  settings: {
+    churchName: "PIWC Gießen",
+    address: "",
+    taxId: "",
+    crest: "",
+    leaders: [
+      {role:"Senior Pastor", name:""},
+      {role:"Presiding Elder", name:""},
+      {role:"Finance Chair", name:""},
+      {role:"Treasurer", name:""}
+    ]
+  },
+  cashcounts: [],
+  remits: [],
+  // Attendance records: each record holds a date and an array of present member IDs
+  attendance: []
+};
+
+/*** UTILS ***/
+function loadState(){
+  try{
+    state.members  = JSON.parse(localStorage.getItem(LS_KEYS.members)||"[]");
+    state.contribs = JSON.parse(localStorage.getItem(LS_KEYS.contribs)||"[]");
+    state.expenses = JSON.parse(localStorage.getItem(LS_KEYS.expenses)||"[]");
+    state.hero     = localStorage.getItem(LS_KEYS.hero)||"";
+    state.settings = Object.assign(state.settings, JSON.parse(localStorage.getItem(LS_KEYS.settings)||"{}"));
+    state.cashcounts = JSON.parse(localStorage.getItem(LS_KEYS.cashcounts)||"[]");
+    state.remits = JSON.parse(localStorage.getItem(LS_KEYS.remits)||"[]");
+    // Load attendance records from localStorage
+    state.attendance = JSON.parse(localStorage.getItem(LS_KEYS.attendance)||"[]");
+  }catch(e){ console.error(e) }
+}
+function saveState(){
+  localStorage.setItem(LS_KEYS.members, JSON.stringify(state.members));
+  localStorage.setItem(LS_KEYS.contribs, JSON.stringify(state.contribs));
+  localStorage.setItem(LS_KEYS.expenses, JSON.stringify(state.expenses));
+  localStorage.setItem(LS_KEYS.settings, JSON.stringify(state.settings));
+  localStorage.setItem(LS_KEYS.cashcounts, JSON.stringify(state.cashcounts));
+  localStorage.setItem(LS_KEYS.remits, JSON.stringify(state.remits));
+  // Persist attendance records
+  localStorage.setItem(LS_KEYS.attendance, JSON.stringify(state.attendance));
+}
+function id(){ return Math.random().toString(36).slice(2,9) }
+function euroFmt(cents){ const v=(cents||0)/100; return v.toLocaleString('de-DE',{style:'currency',currency:'EUR'}) }
+function parseMoneyToCents(str){ const v=Number(String(str).replace(/\./g,'').replace(',','.')); if(isNaN(v)) return 0; return Math.round(v*100) }
+function ymd(d){ const dt=new Date(d); const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const da=String(dt.getDate()).padStart(2,'0'); return `${y}-${m}-${da}` }
+function withinRange(dateISO, fromISO, toISO){
+  const t=new Date(dateISO).getTime();
+  if (fromISO && t<new Date(fromISO+'T00:00:00').getTime()) return false;
+  if (toISO && t>new Date(toISO+'T23:59:59').getTime()) return false;
+  return true;
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
+
+/*** AUTH FUNCTIONS ***/
+// Show the login page. If `setup` is true, it asks the user to set credentials. Otherwise it requests login.
+function showLoginPage(setup){
+  const loginTitle=document.getElementById('loginTitle');
+  const loginButton=document.getElementById('loginButton');
+  const loginError=document.getElementById('loginError');
+  if(!loginTitle||!loginButton||!loginError) return;
+  loginError.style.display='none';
+  if(setup){
+    loginTitle.textContent='Set up Admin Account';
+    loginButton.textContent='Create Account';
+  }else{
+    loginTitle.textContent='Login';
+    loginButton.textContent='Login';
+  }
+  // hide application, show login
+  const appEl=document.querySelector('.app'); if(appEl) appEl.style.display='none';
+  const loginEl=document.getElementById('loginPage'); if(loginEl) loginEl.style.display='flex';
+}
+
+// Handle login or initial account creation
+function handleLogin(){
+  const usernameEl=document.getElementById('loginUser');
+  const passwordEl=document.getElementById('loginPass');
+  const errorEl=document.getElementById('loginError');
+  if(!usernameEl||!passwordEl||!errorEl) return;
+  const username=usernameEl.value.trim();
+  const password=passwordEl.value;
+  errorEl.style.display='none';
+  let creds=null;
+  try{
+    creds=JSON.parse(localStorage.getItem(AUTH_KEYS.creds)||'null');
+  }catch(e){ creds=null; }
+  if(!creds){
+    // creating new account
+    if(!username || !password){
+      errorEl.textContent='Please enter a username and password.';
+      errorEl.style.display='block';
+      return;
+    }
+    localStorage.setItem(AUTH_KEYS.creds, JSON.stringify({username,password}));
+    localStorage.setItem(AUTH_KEYS.loggedIn,'true');
+    // hide login, show app and init
+    const loginEl=document.getElementById('loginPage'); if(loginEl) loginEl.style.display='none';
+    const appEl=document.querySelector('.app'); if(appEl) appEl.style.display='grid';
+    ensureDefaultMembers();
+    initAfterLoad();
+    return;
+  }
+  // login attempt
+  if(username===creds.username && password===creds.password){
+    localStorage.setItem(AUTH_KEYS.loggedIn,'true');
+    const loginEl=document.getElementById('loginPage'); if(loginEl) loginEl.style.display='none';
+    const appEl=document.querySelector('.app'); if(appEl) appEl.style.display='grid';
+    ensureDefaultMembers();
+    initAfterLoad();
+  }else{
+    errorEl.textContent='Incorrect username or password.';
+    errorEl.style.display='block';
+  }
+}
+
+// Initialize authentication. Checks if credentials exist and whether the user is logged in.
+function initAuth(){
+  let creds=null;
+  try{
+    creds=JSON.parse(localStorage.getItem(AUTH_KEYS.creds)||'null');
+  }catch(e){ creds=null; }
+  const loggedIn=localStorage.getItem(AUTH_KEYS.loggedIn)==='true';
+  if(!creds){
+    // no credentials yet – prompt to create account
+    showLoginPage(true);
+  }else if(!loggedIn){
+    // credentials exist but not logged in
+    showLoginPage(false);
+  }else{
+    // already logged in
+    const loginEl=document.getElementById('loginPage'); if(loginEl) loginEl.style.display='none';
+    const appEl=document.querySelector('.app'); if(appEl) appEl.style.display='grid';
+    ensureDefaultMembers();
+    initAfterLoad();
+  }
+}
+
+/*** NAV ***/
+const PAGES = [
+  {id:"dashboard", label:"Dashboard"},
+  {id:"members", label:"Members"},
+  {id:"contribs", label:"Giving & Cash Count"},
+  {id:"remittance", label:"Monthly Remittance"},
+  {id:"income", label:"Income Summary"},
+  {id:"expenses", label:"Expenses"},
+  {id:"overview", label:"Financial Overview"},
+  {id:"reports", label:"Reports"},
+  {id:"attendance", label:"Attendance"},
+  {id:"settings", label:"Settings"}
+];
+function buildMenu(){
+  const menu=document.getElementById('menu'); menu.innerHTML="";
+  PAGES.forEach((p,i)=>{
+    const b=document.createElement('button');
+    b.textContent=p.label; b.dataset.page=p.id; b.className="menu-btn"+(i===0?' active':'');
+    menu.appendChild(b);
+  });
+}
+function showPage(id){
+  document.querySelectorAll('.page').forEach(sec=>sec.hidden=true);
+  const page = document.getElementById('page-'+id);
+  if (page) page.hidden=false;
+  document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+  const btn=[...document.querySelectorAll('.menu button')].find(x=>x.dataset.page===id);
+  if (btn) btn.classList.add('active');
+  if (id==='income') renderIncomeSummary();
+  if (id==='dashboard'||id==='overview') drawAllCharts();
+  if (id==='contribs') { renderContribs(); renderDerivedCashCount(); renderSavedSessions(); }
+  if (id==='remittance') { renderRemittanceUI(); }
+  if (id==='attendance') { renderAttendance(); }
+}
+document.getElementById('menu').addEventListener('click',(e)=>{ const b=e.target.closest('button'); if(b) showPage(b.dataset.page); });
+document.getElementById('gotoSettingsBtn').addEventListener('click', ()=>showPage('settings'));
+
+/*** HERO & CREST ***/
+function applyHero(){ const hero=document.getElementById('heroCard'); if(state.hero){ hero.style.backgroundImage=`url('${state.hero}'), linear-gradient(135deg,#fff,#eef5ff 60%,#e7f0ff)`; } }
+function applyCrest(){
+  const crestTop=document.getElementById('crestTop');
+  const crestReport=document.getElementById('crestReport');
+  [crestTop, crestReport].forEach(el=>{
+    el.innerHTML="";
+    if (state.settings.crest){ const img=document.createElement('img'); img.alt="crest"; img.src=state.settings.crest; el.classList.remove('fallback'); el.appendChild(img); }
+    else el.classList.add('fallback');
+  });
+}
+function applyChurchTexts(){
+  document.getElementById('hdrChurchName').innerHTML = `${escapeHtml(state.settings.churchName)} <small>Stewardship & Records</small>`;
+  document.getElementById('heroTitle').textContent = `Welcome to ${state.settings.churchName} Manager`;
+  document.getElementById('reportChurchName').textContent = `${state.settings.churchName} — Contribution Statement`;
+  document.getElementById('reportChurchAddr').textContent = state.settings.address||"";
+  document.getElementById('reportTaxId').textContent = state.settings.taxId||"";
+}
+
+/*** SETTINGS UI ***/
+function renderSettings(){
+  document.getElementById('sChurchName').value = state.settings.churchName||"";
+  document.getElementById('sAddress').value    = state.settings.address||"";
+  document.getElementById('sTaxId').value      = state.settings.taxId||"";
+  const list=document.getElementById('leadersList'); list.innerHTML="";
+  state.settings.leaders.forEach((L,idx)=>{
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML = `
+      <input class="grow" placeholder="Role" value="${escapeHtml(L.role)}" data-idx="${idx}" data-field="role">
+      <input class="grow" placeholder="Name" value="${escapeHtml(L.name)}" data-idx="${idx}" data-field="name">
+      <button class="btn red" data-action="del" data-idx="${idx}">✕</button>`;
+    list.appendChild(row);
+  });
+  list.onclick=(e)=>{ const btn=e.target.closest('button'); if(btn && btn.dataset.action==="del"){ const i=+btn.dataset.idx; state.settings.leaders.splice(i,1); renderSettings(); } };
+  list.oninput=(e)=>{ const inp=e.target; const i=+inp.dataset.idx; const f=inp.dataset.field; if (state.settings.leaders[i]) state.settings.leaders[i][f]=inp.value; };
+  const financeLeader = state.settings.leaders.find(l=>/finance/i.test(l.role)) || state.settings.leaders[0] || {name:""};
+  document.getElementById('preparedByName').textContent = financeLeader.name || "";
+  const lb=document.getElementById('leadersBlock'); lb.innerHTML="";
+  state.settings.leaders.forEach(l=>{ const div=document.createElement('div'); div.textContent = `${l.role}: ${l.name}`; lb.appendChild(div); });
+
+  // Populate account credentials fields
+  try{
+    const creds = JSON.parse(localStorage.getItem(AUTH_KEYS.creds) || '{}');
+    const uEl=document.getElementById('accountUsername');
+    const pEl=document.getElementById('accountPassword');
+    if(uEl) uEl.value = creds.username || "";
+    if(pEl) pEl.value = "";
+  }catch(e){}
+}
+document.getElementById('addLeaderBtn').addEventListener('click', ()=>{ state.settings.leaders.push({role:"",name:""}); renderSettings(); });
+document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
+  state.settings.churchName = document.getElementById('sChurchName').value.trim() || "PIWC Gießen";
+  state.settings.address    = document.getElementById('sAddress').value.trim();
+  state.settings.taxId      = document.getElementById('sTaxId').value.trim();
+  saveState(); applyChurchTexts(); renderSettings(); alert("Settings saved.");
+});
+document.getElementById('sCrestBtn').addEventListener('click', ()=>document.getElementById('sCrestUpload').click());
+document.getElementById('sCrestUpload').addEventListener('change', (e)=>{
+  const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ state.settings.crest=r.result; saveState(); applyCrest(); renderSettings(); }; r.readAsDataURL(f);
+});
+document.getElementById('sClearCrestBtn').addEventListener('click', ()=>{ state.settings.crest=""; saveState(); applyCrest(); renderSettings(); });
+document.getElementById('sHeroBtn').addEventListener('click', ()=>document.getElementById('sHeroUpload').click());
+document.getElementById('sHeroUpload').addEventListener('change', (e)=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ state.hero=r.result; localStorage.setItem(LS_KEYS.hero,state.hero); applyHero(); }; r.readAsDataURL(f); });
+
+/*** MEMBERS ***/
+function addMember(m){ state.members.push({...m,id:id()}); saveState(); renderMembers(); populateMemberSelects(); refreshMemberDatalist(); renderStats(); }
+function deleteMember(mid){
+  if(!confirm("Delete this member? Their contributions remain but will show as 'Unknown Member'.")) return;
+  state.members=state.members.filter(m=>m.id!==mid); saveState(); renderMembers(); populateMemberSelects(); refreshMemberDatalist();
+}
+function renderMembers(){
+  const q=(document.getElementById('memberSearch').value||"").toLowerCase();
+  const tb=document.getElementById('membersTbody'); tb.innerHTML="";
+  state.members
+   .filter(m=>!q || [m.name,m.phone,m.email,m.address].join(" ").toLowerCase().includes(q))
+   .forEach(m=>{
+     const tr=document.createElement('tr');
+     tr.innerHTML=`
+       <td>${escapeHtml(m.name)}</td>
+       <td>${escapeHtml(m.phone||"")}</td>
+       <td>${escapeHtml(m.email||"")}</td>
+       <td>${escapeHtml(m.address||"")}</td>
+       <td class="table-actions">
+         <button class="btn" onclick='editMember("${m.id}")'>Edit</button>
+         <button class="btn red" onclick='deleteMember("${m.id}")'>Delete</button>
+       </td>`;
+     tb.appendChild(tr);
+   });
+  document.getElementById('statMembers').textContent=state.members.length;
+  refreshMemberDatalist();
+}
+function editMember(mid){
+  const m=state.members.find(x=>x.id===mid); if(!m) return;
+  const name=prompt("Name:", m.name); if(!name) return;
+  const phone=prompt("Phone:", m.phone||"")||"";
+  const email=prompt("Email:", m.email||"")||"";
+  const address=prompt("Address:", m.address||"")||"";
+  Object.assign(m,{name,phone,email,address}); saveState(); renderMembers(); populateMemberSelects(); refreshMemberDatalist();
+}
+document.getElementById('addMemberBtn').onclick=()=>{
+  const name=document.getElementById('mName').value.trim(); if(!name) return alert("Please enter a name");
+  addMember({name,phone:document.getElementById('mPhone').value.trim(),email:document.getElementById('mEmail').value.trim(),address:document.getElementById('mAddress').value.trim()});
+  ['mName','mPhone','mEmail','mAddress'].forEach(id=>document.getElementById(id).value="");
+};
+document.getElementById('memberSearch').addEventListener('input', renderMembers);
+document.getElementById('exportMembersCsvBtn').onclick=()=>{
+  const rows=[["Name","Phone","Email","Address"]];
+  state.members.forEach(m=>rows.push([m.name||"",m.phone||"",m.email||"",m.address||""]));
+  downloadCsv("members.csv", rows);
+};
+
+/*** SELECTS / MEMBER PICKER ***/
+function populateMemberSelects(){
+  const selects=[document.getElementById('fMem'), document.getElementById('rMember')];
+  selects.forEach(sel=>{
+    if(!sel) return; sel.innerHTML="";
+    if(sel.id!=='rMember'){ sel.appendChild(new Option("All members","")); }
+    sel.appendChild(new Option("General / Anonymous","GENERAL"));
+    state.members.forEach(m=> sel.appendChild(new Option(m.name, m.id)));
+  });
+}
+function refreshMemberDatalist(){
+  const dl=document.getElementById('dlMembers'); if(!dl) return; dl.innerHTML="";
+  state.members.forEach(m=>{ const opt=document.createElement('option'); opt.value=m.name; dl.appendChild(opt); });
+}
+function memberName(mid){ if(mid==="GENERAL") return "General / Anonymous"; return (state.members.find(m=>m.id===mid)||{name:"Unknown Member"}).name; }
+function findMemberIdByName(name){
+  if(!name) return null;
+  const n=name.trim().toLowerCase();
+  let m = state.members.find(x=>x.name.toLowerCase()===n)
+       || state.members.find(x=>x.name.toLowerCase().startsWith(n))
+       || state.members.find(x=>x.name.toLowerCase().includes(n));
+  return m? m.id : null;
+}
+
+/*** DENOM GRID ***/
+function buildDenoms(containerId,totalSpanId,clearBtnId){
+  const wrap=document.getElementById(containerId); wrap.innerHTML="";
+  DENOMS.forEach(d=>{
+    const div=document.createElement('div'); div.className="denom";
+    div.innerHTML = `<div class="row"><div class="tag">${d.label}</div><div><input data-cents="${d.cents}" class="denom-count" type="number" min="0" step="1" value="0"></div></div>`;
+    wrap.appendChild(div);
+  });
+  function sum(){
+    const counts=[...wrap.querySelectorAll('.denom-count')];
+    const s=counts.reduce((acc,el)=>acc+(parseInt(el.value||"0",10)*parseInt(el.dataset.cents,10)),0);
+    if(totalSpanId) document.getElementById(totalSpanId).textContent=euroFmt(s);
+    return s;
+  }
+  wrap.addEventListener('input', sum);
+  if(clearBtnId) document.getElementById(clearBtnId).onclick=()=>{ wrap.querySelectorAll('.denom-count').forEach(i=>i.value=0); sum(); };
+  sum();
+  return {sum, clear:()=>{ wrap.querySelectorAll('.denom-count').forEach(i=>i.value=0); sum(); }};
+}
+const denomsMain = {};
+
+/*** CONTRIBUTIONS ***/
+function toggleMemberPicker(){
+  const cat=document.getElementById('cCategory').value;
+  document.getElementById('memberPickerWrap').style.display = (/^(Tithe|Offering)$/).test(cat) ? "" : "none";
+}
+document.getElementById('cCategory').addEventListener('change', toggleMemberPicker);
+
+function addContributionObj(obj){
+  state.contribs.push(obj);
+  saveState();
+  renderContribs();
+  renderIncomeSummary();
+  renderStats();
+  drawAllCharts();
+  renderMemberReport();
+  renderTotalReport();
+  renderDerivedCashCount();  // keep cash count in sync
+}
+function addContributionFromForm(){
+  let member = "GENERAL"; // default
+  const category = document.getElementById('cCategory').value;
+  const date = document.getElementById('cDate').value || ymd(new Date());
+  const notes = document.getElementById('cNotes').value.trim();
+  let donor = document.getElementById('cDonor').value.trim();
+  const recordedBy = document.getElementById('cRecordedBy').value.trim();
+  const amountCents = denomsMain.main.sum();
+  if (!amountCents) return alert("Please enter denomination counts (amount > 0)");
+
+  // For non-tithe/offering, still require 'recorded by'
+  if (!/^(Tithe|Offering)$/.test(category) && !recordedBy) return alert("Please enter the name of the person who recorded this entry.");
+
+  // Member selection for Tithe/Offering via datalist
+  if (/^(Tithe|Offering)$/.test(category)){
+    const typed = (document.getElementById('cMemberSearch').value||"").trim();
+    if (typed){
+      const mid = findMemberIdByName(typed);
+      if (!mid) return alert("Please choose a member from the dropdown suggestions, or clear the field to record as General/Anonymous.");
+      member = mid;
+      donor = ""; // we use member instead of free-text donor
+    }
+  }
+
+  const denoms={};
+  document.querySelectorAll('#denoms .denom-count').forEach(i=>{
+    const c=parseInt(i.value||"0",10); if(c>0) denoms[i.dataset.cents]=c;
+  });
+  addContributionObj({id:id(), memberId:member, donorName: donor||"", recordedBy: recordedBy||"", category, date, notes, amountCents, denoms});
+
+  denomsMain.main.clear();
+  ['cNotes','cDonor','cMemberSearch'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=""; });
+}
+document.getElementById('addContributionBtn').onclick=addContributionFromForm;
+
+function renderContribs(){
+  const fCat=document.getElementById('fCat'); fCat.innerHTML="<option value=''>All categories</option>"; INCOME_CATS.forEach(c=>fCat.appendChild(new Option(c,c)));
+  const from=document.getElementById('fFrom').value, to=document.getElementById('fTo').value, cat=document.getElementById('fCat').value, mem=document.getElementById('fMem').value;
+  const tb=document.getElementById('contribsTbody'); tb.innerHTML="";
+  state.contribs
+    .filter(c=>(!cat || c.category===cat) && (!mem || c.memberId===mem) && withinRange(c.date,from,to))
+    .sort((a,b)=>a.date<b.date?1:-1)
+    .forEach(c=>{
+      const name = c.memberId==="GENERAL" ? (c.donorName||"General / Anonymous") : memberName(c.memberId);
+      const tr=document.createElement('tr');
+      tr.innerHTML=`
+        <td>${c.date}</td>
+        <td>${escapeHtml(name)}</td>
+        <td>${escapeHtml(c.category)}</td>
+        <td class="right-align">${euroFmt(c.amountCents)}</td>
+        <td>${escapeHtml(c.recordedBy||"")}</td>
+        <td>${escapeHtml(c.notes||"")}</td>
+        <td class="table-actions">
+          <button class="btn" onclick='viewDenoms("${c.id}")'>Denoms</button>
+          <button class="btn red" onclick='deleteContrib("${c.id}")'>Delete</button>
+        </td>`;
+      tb.appendChild(tr);
+    });
+}
+['fFrom','fTo','fCat','fMem'].forEach(id=>document.getElementById(id).addEventListener('change', renderContribs));
+
+function viewDenoms(cid){
+  const c=state.contribs.find(x=>x.id===cid); if(!c) return;
+  const lines=Object.entries(c.denoms||{}).sort((a,b)=>b[0]-a[0]).map(([cent,count])=>`${count} × ${euroFmt(parseInt(cent,10))}`).join("\n");
+  const name = c.memberId==="GENERAL" ? (c.donorName||"General / Anonymous") : memberName(c.memberId);
+  alert(`${c.date} • ${c.category}\n${name}\nRecorded by: ${c.recordedBy||"—"}\n\nBreakdown:\n${lines||"—"}`);
+}
+function deleteContrib(cid){
+  if(!confirm("Delete this contribution?")) return;
+  state.contribs=state.contribs.filter(c=>c.id!==cid); saveState();
+  renderContribs(); renderIncomeSummary(); renderStats(); drawAllCharts(); renderMemberReport(); renderTotalReport(); renderDerivedCashCount();
+}
+document.getElementById('exportContribCsvBtn').onclick=()=>{
+  const from=document.getElementById('fFrom').value, to=document.getElementById('fTo').value, cat=document.getElementById('fCat').value, mem=document.getElementById('fMem').value;
+  const rows=[["Date","MemberOrDonor","Category","AmountEUR","RecordedBy","Notes"]];
+  state.contribs
+    .filter(c=>(!cat || c.category===cat) && (!mem || c.memberId===mem) && withinRange(c.date,from,to))
+    .forEach(c=>{
+      const name=c.memberId==="GENERAL" ? (c.donorName||"General / Anonymous") : memberName(c.memberId);
+      rows.push([c.date,name,c.category,(c.amountCents/100).toFixed(2),c.recordedBy||"",c.notes||""]);
+    });
+  downloadCsv("contributions.csv", rows);
+};
+
+/*** INCOME SUMMARY ***/
+function renderIncomeSummary(){
+  const from = document.getElementById('iFrom').value;
+  const to   = document.getElementById('iTo').value;
+  const agg = {}; INCOME_CATS.forEach(cat => agg[cat] = 0);
+  state.contribs.filter(c=>withinRange(c.date,from,to)).forEach(c=>{ const k=c.category||'Other'; if(!(k in agg)) agg[k]=0; agg[k]+=c.amountCents; });
+  const tb=document.getElementById('incomeTbody'); tb.innerHTML=""; let grand=0;
+  Object.entries(agg).forEach(([cat,cents])=>{ grand+=cents; const tr=document.createElement('tr'); tr.innerHTML=`<td>${escapeHtml(cat)}</td><td class="right-align">${euroFmt(cents)}</td>`; tb.appendChild(tr); });
+  document.getElementById('incomeGrand').textContent=euroFmt(grand);
+}
+['iFrom','iTo'].forEach(id=>document.getElementById(id).addEventListener('change', renderIncomeSummary));
+document.getElementById('exportIncomeCsvBtn').onclick=()=>{
+  const from=document.getElementById('iFrom').value, to=document.getElementById('iTo').value;
+  const agg={}; INCOME_CATS.forEach(c=>agg[c]=0);
+  state.contribs.filter(c=>withinRange(c.date,from,to)).forEach(c=>{ const k=c.category||'Other'; if(!(k in agg)) agg[k]=0; agg[k]+=c.amountCents; });
+  const rows=[["Category","TotalEUR"]]; Object.entries(agg).forEach(([k,v])=>rows.push([k,(v/100).toFixed(2)])); downloadCsv("income_summary.csv", rows);
+};
+
+/*** EXPENSES ***/
+function renderExpenses(){
+  const eCat=document.getElementById('eCat'); eCat.innerHTML="<option value=''>All categories</option>"; EXPENSE_CATS.forEach(c=>eCat.appendChild(new Option(c,c)));
+  const from=document.getElementById('eFrom').value, to=document.getElementById('eTo').value, cat=document.getElementById('eCat').value;
+  const tb=document.getElementById('expensesTbody'); tb.innerHTML="";
+  state.expenses.filter(e=>(!cat||e.category===cat)&&withinRange(e.date,from,to)).sort((a,b)=>a.date<b.date?1:-1).forEach(e=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${e.date}</td><td>${escapeHtml(e.category)}</td><td class="right-align">${euroFmt(e.amountCents)}</td><td>${escapeHtml(e.notes||"")}</td>
+    <td class="table-actions"><button class="btn red" onclick='deleteExpense("${e.id}")'>Delete</button></td>`; tb.appendChild(tr);
+  });
+}
+function deleteExpense(idv){ if(!confirm("Delete this expense?")) return; state.expenses=state.expenses.filter(e=>e.id!==idv); saveState(); renderExpenses(); renderStats(); drawAllCharts(); }
+document.getElementById('addExpenseBtn').onclick=()=>{
+  const category=document.getElementById('eCategory').value;
+  const date=document.getElementById('eDate').value || ymd(new Date());
+  const amountCents=parseMoneyToCents(document.getElementById('eAmount').value);
+  const notes=document.getElementById('eNotes').value.trim();
+  if(!amountCents) return alert("Please enter an amount");
+  state.expenses.push({id:id(), category, date, amountCents, notes}); saveState(); renderExpenses(); renderStats(); drawAllCharts();
+  ['eAmount','eNotes'].forEach(id=>document.getElementById(id).value="");
+};
+['eFrom','eTo','eCat'].forEach(id=>document.getElementById(id).addEventListener('change', renderExpenses));
+document.getElementById('exportExpensesCsvBtn').onclick=()=>{
+  const from=document.getElementById('eFrom').value, to=document.getElementById('eTo').value, cat=document.getElementById('eCat').value;
+  const rows=[["Date","Category","AmountEUR","Notes"]];
+  state.expenses.filter(e=>(!cat || e.category===cat) && withinRange(e.date,from,to)).forEach(e=>rows.push([e.date,e.category,(e.amountCents/100).toFixed(2),e.notes||""]));
+  downloadCsv("expenses.csv", rows);
+};
+
+/*** OVERVIEW & CHARTS ***/
+function renderStats(){
+  const year=new Date().getFullYear(); const from=`${year}-01-01`, to=`${year}-12-31`;
+  const incomeYtd=state.contribs.filter(c=>withinRange(c.date,from,to)).reduce((a,c)=>a+c.amountCents,0);
+  const expenseYtd=state.expenses.filter(e=>withinRange(e.date,from,to)).reduce((a,c)=>a+c.amountCents,0);
+  document.getElementById('statIncome').textContent=euroFmt(incomeYtd);
+  document.getElementById('statExpenses').textContent=euroFmt(expenseYtd);
+
+  const ov=document.getElementById('overviewStats'); ov.innerHTML="";
+  const cards=[
+    {k:"Total Members", v: state.members.length},
+    {k:"All-time Income", v: euroFmt(state.contribs.reduce((a,c)=>a+c.amountCents,0))},
+    {k:"All-time Expenses", v: euroFmt(state.expenses.reduce((a,c)=>a+c.amountCents,0))},
+    {k:"Balance (All-time)", v: euroFmt(state.contribs.reduce((a,c)=>a+c.amountCents,0)-state.expenses.reduce((a,c)=>a+c.amountCents,0))}
+  ];
+  cards.forEach(c=>{ const div=document.createElement('div'); div.className="card"; div.innerHTML=`<h3>${c.k}</h3><div class="badge">${c.v}</div>`; ov.appendChild(div); });
+}
+function drawBar(canvasId, labels, seriesList, colors){
+  const canvas=document.getElementById(canvasId); if(!canvas) return; const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height; ctx.clearRect(0,0,W,H);
+  const padding=50, chartW=W-padding*2, chartH=H-padding*2;
+  const max=Math.max(1, ...seriesList.flat().map(v=>v));
+  ctx.strokeStyle="#cfe0ff"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(padding,padding); ctx.lineTo(padding,H-padding); ctx.lineTo(W-padding,H-padding); ctx.stroke();
+  const groups=labels.length, seriesCount=seriesList.length, groupWidth=chartW/groups, barGap=8, barW=(groupWidth - barGap*(seriesCount+1))/seriesCount;
+  labels.forEach((lab,gi)=>{
+    const gx=padding+gi*groupWidth; ctx.fillStyle="#56759a"; ctx.font="12px system-ui"; ctx.textAlign="center"; ctx.fillText(lab, gx+groupWidth/2, H-padding+18);
+    seriesList.forEach((series,si)=>{ const val=series[gi]; const h=(val/max)*(chartH-10); const x=gx+barGap+si*(barW+barGap); const y=H-padding-h; ctx.fillStyle=colors[si%colors.length]; ctx.fillRect(x,y,barW,h); });
+  });
+}
+function last12Labels(){ const arr=[], d=new Date(); for(let i=11;i>=0;i--){ const dt=new Date(d.getFullYear(), d.getMonth()-i, 1); arr.push(dt.toLocaleString('en-GB',{month:'short'})); } return arr; }
+function monthlyAgg(contribs){ const out=new Array(12).fill(0), now=new Date(); contribs.forEach(c=>{ const d=new Date(c.date); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); if(diff>=0&&diff<12) out[11-diff]+=c.amountCents; }); return out.map(v=>v/100) }
+function monthlyAggExpenses(){ const out=new Array(12).fill(0), now=new Date(); state.expenses.forEach(e=>{ const d=new Date(e.date); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); if(diff>=0&&diff<12) out[11-diff]+=e.amountCents; }); return out.map(v=>v/100) }
+function drawAllCharts(){
+  drawBar('barIE', last12Labels(), [monthlyAgg(state.contribs), monthlyAggExpenses()], ["#ffd200","#0b4fb3"]);
+  const cats=INCOME_CATS.slice(); const y=cats.map(cat=> state.contribs.filter(c=>withinRange(c.date, `${new Date().getFullYear()}-01-01`, `${new Date().getFullYear()}-12-31`) && c.category===cat).reduce((a,c)=>a+c.amountCents,0)/100 );
+  drawBar('barCats', cats, [y], ["#e53935"]);
+  drawBar('flow12', last12Labels(), [monthlyAgg(state.contribs), monthlyAggExpenses()], ["#ffd200","#0b4fb3"]);
+}
+
+/*** REPORTS ***/
+function renderMemberReport(){
+  const mid=document.getElementById('rMember').value; const from=document.getElementById('rFrom').value; const to=document.getElementById('rTo').value;
+  const tb=document.getElementById('reportTbody'); tb.innerHTML="";
+  const list=state.contribs.filter(c=>(!mid || c.memberId===mid) && withinRange(c.date,from,to)).sort((a,b)=>a.date<b.date?1:-1);
+  let sum=0; list.forEach(c=>{ sum+=c.amountCents; const tr=document.createElement('tr'); tr.innerHTML=`<td>${c.date}</td><td>${escapeHtml(c.category)}</td><td>${escapeHtml(c.notes||"")}</td><td class="right-align">${euroFmt(c.amountCents)}</td>`; tb.appendChild(tr); });
+  document.getElementById('reportTotal').textContent=euroFmt(sum);
+  document.getElementById('reportRange').textContent=`Period: ${from||'—'} to ${to||'—'}`;
+  document.getElementById('reportMemberLine').textContent = mid ? `Member: ${memberName(mid)}` : "Member: (All)";
+  document.getElementById('reportGenDate').textContent=new Date().toLocaleString();
+  renderSettings();
+}
+['rMember','rFrom','rTo'].forEach(id=>document.getElementById(id).addEventListener('change', renderMemberReport));
+document.getElementById('rPrintBtn').onclick=()=>window.print();
+document.getElementById('rExportCsvBtn').onclick=()=>{
+  const mid=document.getElementById('rMember').value, from=document.getElementById('rFrom').value, to=document.getElementById('rTo').value;
+  const rows=[["Date","Member","Category","AmountEUR","Notes"]];
+  state.contribs.filter(c=>(!mid || c.memberId===mid) && withinRange(c.date,from,to)).forEach(c=>rows.push([c.date, memberName(c.memberId), c.category, (c.amountCents/100).toFixed(2), c.notes||""]));
+  downloadCsv("member_statement.csv", rows);
+};
+function renderTotalReport(){
+  const from = document.getElementById('rtFrom').value; const to   = document.getElementById('rtTo').value;
+  const agg = {}; INCOME_CATS.forEach(cat => agg[cat] = 0);
+  state.contribs.filter(c => withinRange(c.date, from, to)).forEach(c => { const key = c.category || 'Other'; if (!(key in agg)) agg[key] = 0; agg[key] += c.amountCents; });
+  const tb = document.getElementById('rtTbody'); tb.innerHTML=""; let grand=0;
+  Object.entries(agg).forEach(([k,v])=>{ grand+=v; const tr=document.createElement('tr'); tr.innerHTML=`<td>${escapeHtml(k)}</td><td class="right-align">${euroFmt(v)}</td>`; tb.appendChild(tr); });
+  document.getElementById('rtGrand').textContent=euroFmt(grand); document.getElementById('rtRange').textContent=`Period: ${from||'—'} to ${to||'—'}`;
+}
+['rtFrom','rtTo'].forEach(id=>document.getElementById(id).addEventListener('change', renderTotalReport));
+document.getElementById('rtPrintBtn').onclick=()=>window.print();
+document.getElementById('rtExportCsvBtn').onclick=()=>{
+  const from = document.getElementById('rtFrom').value; const to   = document.getElementById('rtTo').value;
+  const agg = {}; INCOME_CATS.forEach(cat => agg[cat] = 0);
+  state.contribs.filter(c => withinRange(c.date, from, to)).forEach(c => { const key = c.category || 'Other'; if (!(key in agg)) agg[key] = 0; agg[key] += c.amountCents; });
+  const rows = [["Category","TotalEUR"]]; Object.entries(agg).forEach(([k,v]) => rows.push([k,(v/100).toFixed(2)])); downloadCsv("overall_contributions.csv", rows);
+};
+
+/*** CASH COUNT — derived from contributions on selected date ***/
+function leaderDefault(roleRegex){ return (state.settings.leaders.find(x=>roleRegex.test(x.role))||{}).name||""; }
+function buildCC2Table(){
+  const body=document.getElementById('cc2Body'); body.innerHTML="";
+  const notes=[50000,20000,10000,5000,2000,1000,500];
+  const coins=[200,100,50,20,10,5,2,1];
+  function addRow(cents){ const tr=document.createElement('tr'); tr.innerHTML=`<td>${euroFmt(cents)}</td><td class="right-align" data-qty></td><td class="right-align" data-amt></td>`; tr.dataset.cents=cents; body.appendChild(tr); }
+  notes.forEach(addRow); const divider=document.createElement('tr'); divider.innerHTML=`<td colspan="3" style="background:#f8fbff;font-weight:800">COINS</td>`; body.appendChild(divider); coins.forEach(addRow);
+}
+function renderDerivedCashCount(){
+  const d=ymd(new Date());
+  if(!document.getElementById('cc2Date').value) document.getElementById('cc2Date').value=d;
+  if(!document.getElementById('cc2Label').value) document.getElementById('cc2Label').value="Sunday Service";
+  if(!document.getElementById('cc2Prepared').value) document.getElementById('cc2Prepared').value=leaderDefault(/finance/i);
+  if(!document.getElementById('cc2Approved').value) document.getElementById('cc2Approved').value=leaderDefault(/presiding/i);
+  if(!document.getElementById('cc2Received').value) document.getElementById('cc2Received').value=leaderDefault(/treas/i);
+
+  const date=document.getElementById('cc2Date').value||d;
+  const includeCats = new Set([
+    document.getElementById('ccIncTithe').checked ? "Tithe" : null,
+    document.getElementById('ccIncOffering').checked ? "Offering" : null,
+    document.getElementById('ccIncSpecial').checked ? "Special Offering" : null
+  ].filter(Boolean));
+
+  const aggDenoms={};
+  let notesSum=0, coinsSum=0;
+  state.contribs.filter(c=>c.date===date && includeCats.has(c.category)).forEach(c=>{
+    Object.entries(c.denoms||{}).forEach(([cent,count])=>{
+      aggDenoms[cent]=(aggDenoms[cent]||0)+count;
+      const amount = parseInt(cent,10)*count;
+      if(parseInt(cent,10)>=500) notesSum+=amount; else coinsSum+=amount;
+    });
+  });
+
+  document.querySelectorAll('#cc2Body tr[data-cents]').forEach(tr=>{
+    const cents=parseInt(tr.dataset.cents,10);
+    const qty=aggDenoms[cents]||0; const amt=qty*cents;
+    tr.querySelector('[data-qty]').textContent=qty;
+    tr.querySelector('[data-amt]').textContent=euroFmt(amt);
+  });
+  document.getElementById('cc2NotesSubtotal').textContent=euroFmt(notesSum);
+  document.getElementById('cc2CoinsSubtotal').textContent=euroFmt(coinsSum);
+  document.getElementById('cc2Grand').textContent=euroFmt(notesSum+coinsSum);
+}
+['cc2Date','ccIncTithe','ccIncOffering','ccIncSpecial'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', renderDerivedCashCount);
+});
+
+function cc2Save(){
+  const date=document.getElementById('cc2Date').value||ymd(new Date());
+  const label=document.getElementById('cc2Label').value||"Service";
+  const prepared=document.getElementById('cc2Prepared').value||"";
+  const approved=document.getElementById('cc2Approved').value||"";
+  const received=document.getElementById('cc2Received').value||"";
+  const incTithe=!!document.getElementById('ccIncTithe').checked;
+  const incOffering=!!document.getElementById('ccIncOffering').checked;
+  const incSpecial=!!document.getElementById('ccIncSpecial').checked;
+
+  const rows=[...document.querySelectorAll('#cc2Body tr[data-cents]')];
+  const denoms={}; let notesSubtotal=0, coinsSubtotal=0, total=0;
+  rows.forEach(tr=>{
+    const cents=parseInt(tr.dataset.cents,10); const qty=parseInt(tr.querySelector('[data-qty]').textContent||"0",10);
+    if(qty>0){ denoms[cents]=qty; total+=qty*cents; if(cents>=500) notesSubtotal+=qty*cents; else coinsSubtotal+=qty*cents; }
+  });
+  state.cashcounts.push({
+    id:id(), serviceDate:date, serviceLabel:label,
+    preparedBy:prepared, approvedBy:approved, receivedBy:received,
+    includes:{tithe:incTithe, offering:incOffering, special:incSpecial},
+    denoms, notesSubtotalCents:notesSubtotal, coinsSubtotalCents:coinsSubtotal,
+    grandTotalCents:total, createdAt:new Date().toISOString()
+  });
+  saveState(); renderSavedSessions(); alert("Cash Count snapshot saved.");
+  if(!document.getElementById('page-remittance').hidden) renderRemittanceUI();
+}
+document.getElementById('cc2SaveBtn').onclick=cc2Save;
+
+function buildCashPrintHTML(sess){
+  const rowsNotes=[50000,20000,10000,5000,2000,1000,500];
+  const rowsCoins=[200,100,50,20,10,5,2,1];
+  function row(c){
+    const qty = sess.denoms[String(c)]||0;
+    const amt = qty*c;
+    return `<tr><td>${euroFmt(c)}</td><td class="right-align">${qty}</td><td class="right-align">${euroFmt(amt)}</td></tr>`;
+  }
+  const inc = sess.includes||{};
+  const incLabel = ['tithe','offering','special'].filter(k=>inc[k]).map(k=>k[0].toUpperCase()+k.slice(1)).join(', ') || '—';
+  return `
+  <div class="print-area" style="padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div><strong>THE CHURCH OF PENTECOST INT. e.V., GERMANY</strong><br><span class="small">CASH COUNT REPORT — ASSEMBLY / DISTRICT</span></div>
+      <div><strong>GIESSEN PIWC</strong><div class="small">${sess.serviceDate}</div></div>
+    </div>
+    <div class="small" style="margin-bottom:6px"><strong>Service:</strong> ${escapeHtml(sess.serviceLabel)} — <strong>Includes:</strong> ${incLabel}</div>
+    <table class="cash-table lined">
+      <thead><tr><th>Notes</th><th class="right-align">Quantity</th><th class="right-align">Euro Amount</th></tr></thead>
+      <tbody>
+        ${rowsNotes.map(row).join("")}
+        <tr><td colspan="3" style="background:#f0f4ff;font-weight:800">COINS</td></tr>
+        ${rowsCoins.map(row).join("")}
+      </tbody>
+      <tfoot>
+        <tr><td class="right-align">SUB-TOTAL (NOTES)</td><td></td><td class="right-align">${euroFmt(sess.notesSubtotalCents)}</td></tr>
+        <tr><td class="right-align">SUB-TOTAL (COINS)</td><td></td><td class="right-align">${euroFmt(sess.coinsSubtotalCents)}</td></tr>
+        <tr><td class="right-align">GRAND TOTAL CASH</td><td></td><td class="right-align">${euroFmt(sess.grandTotalCents)}</td></tr>
+      </tfoot>
+    </table>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px">
+      <div>Prepared by: <strong>${escapeHtml(sess.preparedBy||"")}</strong><br><span class="small">(FINANCIAL SECRETARY)</span></div>
+      <div>Approved by: <strong>${escapeHtml(sess.approvedBy||"")}</strong><br><span class="small">(PRESIDING ELDER/MINISTRY)</span></div>
+      <div>Received by: <strong>${escapeHtml(sess.receivedBy||"")}</strong><br><span class="small">(TREASURER)</span></div>
+    </div>
+  </div>`;
+}
+function ccPrintSaved(idv){ const s=state.cashcounts.find(x=>x.id===idv); if(!s) return; const w=window.open("","_blank"); w.document.write(`<html><head><title>Cash Count</title></head><body>${buildCashPrintHTML(s)}<script>window.print();<\/script></body></html>`); w.document.close();}
+function cc2Print(){
+  const sess={
+    serviceDate: document.getElementById('cc2Date').value||ymd(new Date()),
+    serviceLabel: document.getElementById('cc2Label').value||"Service",
+    preparedBy: document.getElementById('cc2Prepared').value||"",
+    approvedBy: document.getElementById('cc2Approved').value||"",
+    receivedBy: document.getElementById('cc2Received').value||"",
+    includes:{
+      tithe: !!document.getElementById('ccIncTithe').checked,
+      offering: !!document.getElementById('ccIncOffering').checked,
+      special: !!document.getElementById('ccIncSpecial').checked
+    },
+    denoms:{}, notesSubtotalCents:0, coinsSubtotalCents:0, grandTotalCents:0
+  };
+  document.querySelectorAll('#cc2Body tr[data-cents]').forEach(tr=>{
+    const cents=parseInt(tr.dataset.cents,10);
+    const qty=parseInt(tr.querySelector('[data-qty]').textContent||"0",10);
+    if(qty>0){ sess.denoms[cents]=qty; const amt=qty*cents; sess.grandTotalCents+=amt; if(cents>=500) sess.notesSubtotalCents+=amt; else sess.coinsSubtotalCents+=amt; }
+  });
+  const w=window.open("","_blank"); w.document.write(`<html><head><title>Cash Count</title></head><body>${buildCashPrintHTML(sess)}<script>window.print();<\/script></body></html>`); w.document.close();
+}
+document.getElementById('cc2PrintBtn').onclick=cc2Print;
+
+function renderSavedSessions(){
+  const tb=document.getElementById('cc2SessionsTbody'); tb.innerHTML="";
+  state.cashcounts.sort((a,b)=>a.serviceDate<b.serviceDate?1:-1).forEach(s=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${s.serviceDate}</td><td>${escapeHtml(s.serviceLabel)}</td><td class="right-align">${euroFmt(s.grandTotalCents)}</td>
+    <td class="table-actions"><button class="btn" onclick='ccPrintSaved("${s.id}")'>Print</button><button class="btn red" onclick='ccDelete("${s.id}")'>Delete</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+function ccDelete(idv){ if(!confirm("Delete this saved snapshot?")) return; state.cashcounts=state.cashcounts.filter(x=>x.id!==idv); saveState(); renderSavedSessions(); if(!document.getElementById('page-remittance').hidden) renderRemittanceUI(); }
+
+/*** MONTHLY REMITTANCE — fed by Cash Count sessions ***/
+function buildMonthYearSelectsRem(){
+  const mSel=document.getElementById('remMonth'); const ySel=document.getElementById('remYear');
+  if(mSel.options.length===0){ for(let m=1;m<=12;m++) mSel.appendChild(new Option(new Date(2000,m-1,1).toLocaleString('en-GB',{month:'long'}), m)); }
+  if(ySel.options.length===0){ const thisY=new Date().getFullYear(); for(let y=thisY-5;y<=thisY+2;y++) ySel.appendChild(new Option(String(y), y)); }
+  if(!mSel.value) mSel.value = String(new Date().getMonth()+1);
+  if(!ySel.value) ySel.value = String(new Date().getFullYear());
+  const L=state.settings.leaders;
+  const finance=(L.find(x=>/finance/i.test(x.role))||{}).name||"";
+  const presiding=(L.find(x=>/presiding/i.test(x.role))||{}).name||"";
+  if(!document.getElementById('remPrepared').value) document.getElementById('remPrepared').value=finance;
+  if(!document.getElementById('remApproved').value) document.getElementById('remApproved').value=presiding;
+}
+function weekOfMonth(date){
+  const d=new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const first=new Date(d.getFullYear(), d.getMonth(), 1);
+  const day=(first.getDay()+6)%7;
+  return Math.floor((d.getDate()+day-1)/7)+1;
+}
+function selectedMonthRangeRem(){
+  const m=parseInt(document.getElementById('remMonth').value,10)-1;
+  const y=parseInt(document.getElementById('remYear').value,10);
+  const from=new Date(y,m,1); const to=new Date(y,m+1,0);
+  return {from: ymd(from), to: ymd(to)};
+}
+function renderRemittanceUI(){
+  buildMonthYearSelectsRem();
+  const weeksBody=document.getElementById('remWeeks');
+  if(!weeksBody.dataset.built){
+    weeksBody.innerHTML="";
+    for(let i=1;i<=5;i++){
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${i}st Week Tithes and Offering</td>
+        <td class="right-align"><input type="number" step="1" min="0" value="0" data-week="${i}" data-part="euro" style="width:110px"></td>
+        <td class="right-align"><input type="number" step="1" min="0" value="0" data-week="${i}" data-part="cent" style="width:110px"></td>`;
+      weeksBody.appendChild(tr);
+    }
+    weeksBody.dataset.built="1";
+    weeksBody.querySelectorAll('input').forEach(inp=>inp.addEventListener('input', recalcMonthlyRem));
+  }
+  const allow=document.getElementById('remAllowables');
+  if(!allow.dataset.built){
+    allow.innerHTML="";
+    [
+      {k:'rent', label:'Church Rent & Mortgage'},
+      {k:'elders', label:"Presiding Elder's Allowance"},
+      {k:'utilities', label:'Utilities'},
+      {k:'other', label:'Other'}
+    ].forEach(item=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${item.label}</td><td class="right-align"><input type="number" step="0.01" min="0" value="0" data-allow="${item.k}" style="width:160px"></td>`;
+      allow.appendChild(tr);
+    });
+    allow.dataset.built="1";
+    allow.querySelectorAll('input').forEach(inp=>inp.addEventListener('input', recalcMonthlyRem));
+  }
+
+  ['remMonth','remYear','remUseTithe','remUseOffering','remUseSpecial','remDevPct','remMission','remAdf','remPension'].forEach(id=>{
+    const el=document.getElementById(id); if(!el._wired){ el.addEventListener('change', ()=>{ if(id.startsWith('remUse')||id==='remMonth'||id==='remYear'){ remAutofillFromCash(); } recalcMonthlyRem(); }); el.addEventListener('input', recalcMonthlyRem); el._wired=true; }
+  });
+  document.getElementById('remAutofillBtn').onclick=remAutofillFromCash;
+  document.getElementById('remSaveBtn').onclick=saveMonthlyRem;
+  document.getElementById('remExportBtn').onclick=exportMonthlyRemCsv;
+  document.getElementById('remPrintBtn').onclick=printMonthlyRem;
+
+  remAutofillFromCash();
+  renderSavedRemittances();
+}
+function remAutofillFromCash(){
+  const {from,to}=selectedMonthRangeRem();
+  const useT=document.getElementById('remUseTithe').checked;
+  const useO=document.getElementById('remUseOffering').checked;
+  const useS=document.getElementById('remUseSpecial').checked;
+  const buckets=[0,0,0,0,0,0];
+
+  state.cashcounts
+    .filter(s=>withinRange(s.serviceDate, from, to))
+    .forEach(s=>{
+      const inc=s.includes||{};
+      const match = (useT && inc.tithe) || (useO && inc.offering) || (useS && inc.special);
+      if(match){
+        const w=weekOfMonth(new Date(s.serviceDate));
+        buckets[w]+=s.grandTotalCents;
+      }
+    });
+
+  for(let i=1;i<=5;i++){
+    const cents=buckets[i]||0;
+    document.querySelector(`#remWeeks [data-week="${i}"][data-part="euro"]`).value=Math.floor(cents/100);
+    document.querySelector(`#remWeeks [data-week="${i}"][data-part="cent"]`).value=(cents%100);
+  }
+  recalcMonthlyRem();
+}
+function recalcMonthlyRem(){
+  let totalTO=0;
+  for(let i=1;i<=5;i++){
+    const euro=parseInt(document.querySelector(`#remWeeks [data-week="${i}"][data-part="euro"]`).value||"0",10);
+    const cent=parseInt(document.querySelector(`#remWeeks [data-week="${i}"][data-part="cent"]`).value||"0",10);
+    totalTO += euro*100 + cent;
+  }
+  document.getElementById('remTotalTO').textContent=euroFmt(totalTO);
+
+  let totalAllow=0;
+  document.querySelectorAll('#remAllowables [data-allow]').forEach(inp=>{
+    totalAllow += parseMoneyToCents(inp.value||"0");
+  });
+  document.getElementById('remTotalAllowables').textContent=euroFmt(totalAllow);
+
+  const netAfter = totalTO - totalAllow; const pct = Number(document.getElementById('remDevPct').value||10);
+  const devAmt = Math.round(Math.max(0, netAfter) * (pct/100));
+  const localNet = netAfter - devAmt;
+  const mission = parseMoneyToCents(document.getElementById('remMission').value||"0");
+  const adf = parseMoneyToCents(document.getElementById('remAdf').value||"0");
+  const pension = parseMoneyToCents(document.getElementById('remPension').value||"0");
+  const sent = localNet + mission + adf + pension;
+
+  document.getElementById('remNetAfter').textContent=euroFmt(netAfter);
+  document.getElementById('remDevAmount').textContent=euroFmt(devAmt);
+  document.getElementById('remLocalNet').textContent=euroFmt(localNet);
+  document.getElementById('remNetSent').textContent=euroFmt(sent);
+}
+function saveMonthlyRem(){
+  const m=parseInt(document.getElementById('remMonth').value,10);
+  const y=parseInt(document.getElementById('remYear').value,10);
+  const weeks=[];
+  let totalTO=0;
+  for(let i=1;i<=5;i++){
+    const euro=parseInt(document.querySelector(`#remWeeks [data-week="${i}"][data-part="euro"]`).value||"0",10);
+    const cent=parseInt(document.querySelector(`#remWeeks [data-week="${i}"][data-part="cent"]`).value||"0",10);
+    weeks.push({label:`${i}st week`, euro, cent});
+    totalTO += euro*100+cent;
+  }
+  const allow={
+    rent: parseMoneyToCents(document.querySelector('[data-allow="rent"]').value||"0"),
+    elders: parseMoneyToCents(document.querySelector('[data-allow="elders"]').value||"0"),
+    utilities: parseMoneyToCents(document.querySelector('[data-allow="utilities"]').value||"0"),
+    other: parseMoneyToCents(document.querySelector('[data-allow="other"]').value||"0")
+  };
+  const preparedBy=document.getElementById('remPrepared').value.trim(), approvedBy=document.getElementById('remApproved').value.trim();
+  const devPct=Number(document.getElementById('remDevPct').value||10);
+  const mission=parseMoneyToCents(document.getElementById('remMission').value||"0");
+  const adf=parseMoneyToCents(document.getElementById('remAdf').value||"0");
+  const pension=parseMoneyToCents(document.getElementById('remPension').value||"0");
+  const totalAllow=allow.rent+allow.elders+allow.utilities+allow.other;
+  const netAfter=totalTO-totalAllow; const devAmt=Math.round(Math.max(0,netAfter)*(devPct/100));
+  const localNet=netAfter-devAmt; const netSent=localNet+mission+adf+pension;
+
+  state.remits.push({
+    id:id(), month:m, year:y, weeks, allowables:allow, devFundPct:devPct, missionaryOffering:mission, adf, pensionFund:pension,
+    totals:{ totalTO, totalAllowables:totalAllow, netAfterAllowables:netAfter, devFundAmount:devAmt, localNetTithesToDistrict:localNet, netCashSentToDistrict:netSent },
+    preparedBy, approvedBy, createdAt:new Date().toISOString()
+  });
+  saveState(); renderSavedRemittances(); alert("Monthly remittance saved.");
+}
+function exportMonthlyRemCsv(){
+  const m=parseInt(document.getElementById('remMonth').value,10);
+  const y=parseInt(document.getElementById('remYear').value,10);
+  const rows=[["Field","Value"]];
+  rows.push(["Month", new Date(y, m-1, 1).toLocaleString('en-GB',{month:'long', year:'numeric'})]);
+  rows.push(["Prepared By", document.getElementById('remPrepared').value||""]);
+  rows.push(["Approved By", document.getElementById('remApproved').value||""]);
+  for(let i=1;i<=5;i++){
+    const euro=document.querySelector(`#remWeeks [data-week="${i}"][data-part="euro"]`).value||"0";
+    const cent=document.querySelector(`#remWeeks [data-week="${i}"][data-part="cent"]`).value||"0";
+    rows.push([`${i}st Week`, `${euro}.${String(cent).padStart(2,'0')}`]);
+  }
+  rows.push(["Total Tithes & Offering", document.getElementById('remTotalTO').textContent]);
+  rows.push(["Total Allowables", document.getElementById('remTotalAllowables').textContent]);
+  rows.push(["Net after Allowables", document.getElementById('remNetAfter').textContent]);
+  rows.push(["Dev Fund %", document.getElementById('remDevPct').value+"%"]);
+  rows.push(["Dev Fund Amount", document.getElementById('remDevAmount').textContent]);
+  rows.push(["Local Net to District", document.getElementById('remLocalNet').textContent]);
+  rows.push(["Missionary Offering", document.getElementById('remMission').value]);
+  rows.push(["ADF", document.getElementById('remAdf').value]);
+  rows.push(["Pension Fund", document.getElementById('remPension').value]);
+  rows.push(["Net Cash Sent to District", document.getElementById('remNetSent').textContent]);
+  downloadCsv("monthly_remittance.csv", rows);
+}
+function printMonthlyRem(){
+  const m=parseInt(document.getElementById('remMonth').value,10);
+  const y=parseInt(document.getElementById('remYear').value,10);
+  function getCents(i){ const euro=parseInt(document.querySelector(`#remWeeks [data-week="${i}"][data-part="euro"]`).value||"0",10);
+    const cent=parseInt(document.querySelector(`#remWeeks [data-week="${i}"][data-part="cent"]`).value||"0",10);
+    return euro*100+cent;
+  }
+  const rowsWeeks=Array.from({length:5},(_,i)=>getCents(i+1));
+  const allow={
+    rent: parseMoneyToCents(document.querySelector('[data-allow="rent"]').value||"0"),
+    elders: parseMoneyToCents(document.querySelector('[data-allow="elders"]').value||"0"),
+    utilities: parseMoneyToCents(document.querySelector('[data-allow="utilities"]').value||"0"),
+    other: parseMoneyToCents(document.querySelector('[data-allow="other"]').value||"0")
+  };
+  const totalTO=rowsWeeks.reduce((a,b)=>a+b,0), totalAllow=allow.rent+allow.elders+allow.utilities+allow.other;
+  const netAfter=totalTO-totalAllow; const devPct=Number(document.getElementById('remDevPct').value||10);
+  const devAmt=Math.round(Math.max(0,netAfter)*(devPct/100)); const localNet=netAfter-devAmt;
+  const mission=parseMoneyToCents(document.getElementById('remMission').value||"0");
+  const adf=parseMoneyToCents(document.getElementById('remAdf').value||"0");
+  const pension=parseMoneyToCents(document.getElementById('remPension').value||"0");
+  const netSent=localNet+mission+adf+pension;
+
+  const html=`
+  <div class="print-area" style="padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div><strong>THE CHURCH OF PENTECOST INT. e.V., GERMANY</strong><br><span class="small">MONTHLY REMITTANCE — TITHES/OFFERING</span></div>
+      <div><strong>GIESSEN PIWC</strong><div class="small">MONTH ${new Date(y,m-1,1).toLocaleString('en-GB',{month:'long',year:'numeric'})}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <table class="cash-table lined">
+        <thead><tr><th>CASH RECEIPTS</th><th>EURO</th><th>CENT</th></tr></thead>
+        <tbody>
+          ${rowsWeeks.map((v,i)=>`<tr><td>${i+1}st WEEK TITHES AND OFFERING</td><td class="right-align">${Math.floor(v/100)}</td><td class="right-align">${String(v%100).padStart(2,'0')}</td></tr>`).join("")}
+        </tbody>
+        <tfoot><tr><td>TOTAL TITHES AND OFFERING</td><td colspan="2" class="right-align">${euroFmt(totalTO)}</td></tr></tfoot>
+      </table>
+
+      <table class="cash-table lined">
+        <thead><tr><th>ALLOWABLE LOCAL EXPENSES PAID OUT</th><th>EURO</th><th>CENT</th></tr></thead>
+        <tbody>
+          <tr><td>CHURCH RENT AND MORTGAGE</td><td class="right-align">${Math.floor(allow.rent/100)}</td><td class="right-align">${String(allow.rent%100).padStart(2,'0')}</td></tr>
+          <tr><td>PRESIDING ELDER'S ALLOWANCE</td><td class="right-align">${Math.floor(allow.elders/100)}</td><td class="right-align">${String(allow.elders%100).padStart(2,'0')}</td></tr>
+          <tr><td>UTILITIES</td><td class="right-align">${Math.floor(allow.utilities/100)}</td><td class="right-align">${String(allow.utilities%100).padStart(2,'0')}</td></tr>
+          <tr><td>OTHER</td><td class="right-align">${Math.floor(allow.other/100)}</td><td class="right-align">${String(allow.other%100).padStart(2,'0')}</td></tr>
+        </tbody>
+        <tfoot><tr><td>TOTAL</td><td colspan="2" class="right-align">${euroFmt(totalAllow)}</td></tr></tfoot>
+      </table>
+    </div>
+
+    <div style="margin-top:12px">
+      <table class="cash-table lined">
+        <tbody>
+          <tr><td>NET CASH AFTER LOCAL ALLOWABLE EXPENSES</td><td class="right-align">${euroFmt(netAfter)}</td></tr>
+          <tr><td>LESS LOCAL DEVELOPMENT FUND (${devPct}%)</td><td class="right-align">${euroFmt(devAmt)}</td></tr>
+          <tr><td>LOCAL NET TITHES TO DISTRICT</td><td class="right-align">${euroFmt(localNet)}</td></tr>
+          <tr><td>ADD MISSIONARY OFFERING</td><td class="right-align">${euroFmt(mission)}</td></tr>
+          <tr><td>ADF</td><td class="right-align">${euroFmt(adf)}</td></tr>
+          <tr><td>PENSION FUND</td><td class="right-align">${euroFmt(pension)}</td></tr>
+          <tr><td>NET CASH SENT TO DISTRICT</td><td class="right-align">${euroFmt(netSent)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+      <div>Prepared by: <strong>${escapeHtml(document.getElementById('remPrepared').value||"")}</strong></div>
+      <div>Approved by: <strong>${escapeHtml(document.getElementById('remApproved').value||"")}</strong></div>
+    </div>
+  </div>`;
+  const w=window.open("","_blank"); w.document.write(`<html><head><title>Monthly Remittance</title></head><body>${html}<script>window.print();<\/script></body></html>`); w.document.close();
+}
+function renderSavedRemittances(){
+  const tb=document.getElementById('remSavedTbody'); tb.innerHTML="";
+  state.remits.sort((a,b)=>a.year!==b.year ? b.year-a.year : b.month-a.month).forEach((r, idx)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${new Date(r.year, r.month-1, 1).toLocaleString('en-GB',{month:'long'})}</td>
+      <td>${r.year}</td><td class="right-align">${euroFmt(r.totals.totalTO)}</td><td class="right-align">${euroFmt(r.totals.netCashSentToDistrict)}</td>
+      <td class="right-align"><button class="btn small" onclick="deleteRemittance(${idx})">Delete</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+/**
+ * Delete a saved monthly remittance record by index.
+ * Prompts for confirmation before removal and updates the UI.
+ * @param {number} idx
+ */
+function deleteRemittance(idx){
+  if(idx<0 || idx>=state.remits.length) return;
+  if(!confirm("Delete this saved monthly remittance?")) return;
+  state.remits.splice(idx,1);
+  saveState();
+  renderSavedRemittances();
+  // Refresh remittance UI if currently visible
+  if(!document.getElementById('page-remittance').hidden){
+    renderRemittanceUI();
+  }
+}
+
+/*** Attendance Management ***/
+/**
+ * Render the attendance summary table and statistics.
+ * Also updates the total members count and builds the attendance list for the selected date.
+ */
+function renderAttendance(){
+  renderAttendanceSummary();
+  calculateAttendanceStats();
+  const totalMembers = state.members.length;
+  const totalSpan = document.getElementById('attTotalMembersCount');
+  if(totalSpan) totalSpan.textContent = totalMembers;
+  // Build list if date selected
+  const dateInput = document.getElementById('attDate');
+  if(dateInput && dateInput.value){
+    renderAttendanceForm(dateInput.value);
+  } else {
+    const cont=document.getElementById('attListContainer');
+    if(cont) cont.innerHTML="";
+    const pres=document.getElementById('attPresentCount'); if(pres) pres.textContent="0";
+  }
+  // Wire up events
+  const dEl=document.getElementById('attDate');
+  if(dEl && !dEl._wired){
+    dEl.addEventListener('change', ()=>{ renderAttendanceForm(dEl.value); });
+    dEl._wired=true;
+  }
+  const saveBtn=document.getElementById('attSaveBtn');
+  if(saveBtn && !saveBtn._wired){
+    saveBtn.addEventListener('click', saveAttendanceRecord);
+    saveBtn._wired=true;
+  }
+  const printBtn=document.getElementById('attPrintBtn');
+  if(printBtn && !printBtn._wired){
+    printBtn.addEventListener('click', ()=>{ window.print(); });
+    printBtn._wired=true;
+  }
+}
+
+/**
+ * Build the attendance checkbox list for a given date.
+ * Pre-checks members who were recorded as present on that date.
+ * @param {string} dateISO YYYY-MM-DD string
+ */
+function renderAttendanceForm(dateISO){
+  const container = document.getElementById('attListContainer');
+  if(!container) return;
+  container.innerHTML="";
+  if(!dateISO){ return; }
+  // Find existing record for this date
+  const rec = state.attendance.find(r=>r.date===dateISO);
+  const presentIds = rec && Array.isArray(rec.present) ? rec.present : [];
+  // Build table
+  const table=document.createElement('table');
+  table.className="cash-table lined";
+  table.innerHTML = '<thead><tr><th>Present?</th><th>Name</th></tr></thead>';
+  const tbody=document.createElement('tbody');
+  state.members.forEach(m=>{
+    const tr=document.createElement('tr');
+    const checked = presentIds.includes(m.id) ? 'checked' : '';
+    tr.innerHTML = `<td class="center"><input type="checkbox" data-mid="${m.id}" ${checked}></td><td>${escapeHtml(m.name||'')}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.appendChild(table);
+  // Update counts
+  updateAttendanceCount();
+  // Wire checkbox change events
+  [...tbody.querySelectorAll('input[type=checkbox]')].forEach(cb=>{
+    cb.addEventListener('change', updateAttendanceCount);
+  });
+}
+
+/**
+ * Recalculate and display the number of attendees currently checked.
+ */
+function updateAttendanceCount(){
+  const container=document.getElementById('attListContainer');
+  if(!container){ return; }
+  const cbs=[...container.querySelectorAll('input[type=checkbox]')];
+  const count=cbs.filter(cb=>cb.checked).length;
+  const span=document.getElementById('attPresentCount');
+  if(span) span.textContent = count;
+}
+
+/**
+ * Save or update the attendance record for the selected date.
+ */
+function saveAttendanceRecord(){
+  const dateEl=document.getElementById('attDate');
+  if(!dateEl || !dateEl.value){ alert('Please select a date.'); return; }
+  const dateISO=dateEl.value;
+  const container=document.getElementById('attListContainer');
+  if(!container){ alert('Attendance list is not generated.'); return; }
+  const cbs=[...container.querySelectorAll('input[type=checkbox]')];
+  const present = cbs.filter(cb=>cb.checked).map(cb=>cb.getAttribute('data-mid'));
+  let rec = state.attendance.find(r=>r.date===dateISO);
+  if(rec){
+    rec.present = present;
+  } else {
+    state.attendance.push({date: dateISO, present: present});
+  }
+  saveState();
+  renderAttendanceSummary();
+  calculateAttendanceStats();
+  alert('Attendance saved.');
+}
+
+/**
+ * Render the summary table of attendance records (per date).
+ */
+function renderAttendanceSummary(){
+  const tb=document.getElementById('attSummaryTbody');
+  if(!tb) return;
+  tb.innerHTML="";
+  const sorted=(state.attendance||[]).slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
+  sorted.forEach((rec, idx)=>{
+    const count = Array.isArray(rec.present) ? rec.present.length : (rec.count||0);
+    const dateStr = rec.date ? new Date(rec.date).toLocaleDateString('en-GB') : '';
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${dateStr}</td><td class="right-align">${count}</td><td class="right-align"><button class="btn small" onclick="deleteAttendanceRecord(${idx})">Delete</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+/**
+ * Delete an attendance record by index.
+ * Asks for confirmation before removal.
+ * @param {number} idx
+ */
+function deleteAttendanceRecord(idx){
+  if(idx<0 || idx>=state.attendance.length) return;
+  if(!confirm('Delete this attendance record?')) return;
+  state.attendance.splice(idx,1);
+  saveState();
+  renderAttendance();
+}
+
+/**
+ * Calculate and display attendance statistics (e.g., average attendance, max/min attendance).
+ */
+function calculateAttendanceStats(){
+  const statsDiv=document.getElementById('attStats');
+  if(!statsDiv) return;
+  const totalSessions = (state.attendance||[]).length;
+  const totalMembers = state.members.length || 1;
+  if(totalSessions===0){
+    statsDiv.innerHTML = '<div>No attendance data available.</div>';
+    return;
+  }
+  // Extract counts
+  const counts = state.attendance.map(r=> Array.isArray(r.present) ? r.present.length : (r.count||0));
+  const sum = counts.reduce((a,b)=>a+b,0);
+  const avgCount = sum/totalSessions;
+  const avgPercent = (avgCount/totalMembers)*100;
+  const maxCount = Math.max(...counts);
+  const minCount = Math.min(...counts);
+  const maxRec = state.attendance[counts.indexOf(maxCount)];
+  const minRec = state.attendance[counts.indexOf(minCount)];
+  const formatDate = (rec)=> rec && rec.date ? new Date(rec.date).toLocaleDateString('en-GB') : '';
+  const html = [];
+  html.push(`<div>Total services recorded: <strong>${totalSessions}</strong></div>`);
+  html.push(`<div>Average attendance: <strong>${avgCount.toFixed(1)}</strong> (${avgPercent.toFixed(1)}%)</div>`);
+  html.push(`<div>Highest attendance: <strong>${maxCount}</strong> on ${formatDate(maxRec)}</div>`);
+  html.push(`<div>Lowest attendance: <strong>${minCount}</strong> on ${formatDate(minRec)}</div>`);
+  statsDiv.innerHTML = html.join('');
+}
+
+/*** CSV, Backup/Restore/Reset ***/
+function downloadCsv(filename, rows){
+  const esc=(s)=>`"${String(s).replace(/"/g,'""')}"`;
+  const csv=rows.map(r=>r.map(esc).join(",")).join("\n");
+  const blob=new Blob([csv], {type:"text/csv;charset=utf-8"});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+}
+document.getElementById('exportDataBtn').onclick=()=>{ const blob=new Blob([JSON.stringify(state)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`piwc_backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); };
+document.getElementById('importDataBtn').onclick=()=>{
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json';
+  inp.onchange=()=>{
+    const f=inp.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      try{
+        const obj=JSON.parse(rd.result);
+        state.members=obj.members||[]; state.contribs=obj.contribs||[]; state.expenses=obj.expenses||[];
+        state.hero=obj.hero||"";
+        state.settings=Object.assign(state.settings, obj.settings||{});
+        state.cashcounts=obj.cashcounts||[];
+        state.remits=obj.remits||[];
+        // Restore attendance records if present
+        state.attendance=obj.attendance||[];
+        saveState(); localStorage.setItem(LS_KEYS.hero, state.hero||""); initAfterLoad(); alert("Restore complete.");
+      }catch(e){ alert("Invalid JSON file.") }
+    };
+    rd.readAsText(f);
+  };
+  inp.click();
+};
+document.getElementById('resetBtn').onclick=()=>{ if(!confirm("This will clear all local data for this app on this device.")) return; Object.values(LS_KEYS).forEach(k=>localStorage.removeItem(k)); loadState(); initAfterLoad(); };
+
+// Login/logout handlers
+if(document.getElementById('loginButton')){
+  document.getElementById('loginButton').addEventListener('click', handleLogin);
+}
+if(document.getElementById('loginPass')){
+  document.getElementById('loginPass').addEventListener('keypress', (e)=>{ if(e.key==='Enter') handleLogin(); });
+}
+if(document.getElementById('logoutBtn')){
+  document.getElementById('logoutBtn').addEventListener('click', ()=>{
+    localStorage.setItem(AUTH_KEYS.loggedIn,'false');
+    initAuth();
+  });
+}
+// Change credentials handler
+if(document.getElementById('changeCredsBtn')){
+  document.getElementById('changeCredsBtn').addEventListener('click', ()=>{
+    const userEl=document.getElementById('accountUsername');
+    const passEl=document.getElementById('accountPassword');
+    const newUser=userEl ? userEl.value.trim() : '';
+    const newPass=passEl ? passEl.value : '';
+    if(!newUser || !newPass){ alert('Please enter username and password.'); return; }
+    localStorage.setItem(AUTH_KEYS.creds, JSON.stringify({username:newUser,password:newPass}));
+    alert('Credentials updated. Please log in again.');
+    localStorage.setItem(AUTH_KEYS.loggedIn,'false');
+    initAuth();
+  });
+}
+
+/*** INIT ***/
+function initDates(){
+  const today=ymd(new Date());
+  ['cDate','eDate','fTo','iTo','eTo','rTo','rtTo','cc2Date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today; });
+  const start=new Date(new Date().getFullYear(),0,1); const y1=ymd(start);
+  ['fFrom','iFrom','eFrom','rFrom','rtFrom'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=y1; });
+}
+function initAfterLoad(){
+  applyHero(); applyCrest(); applyChurchTexts();
+  buildMenu(); populateMemberSelects(); renderMembers(); refreshMemberDatalist();
+  denomsMain.main = buildDenoms('denoms','cTotal','clearDenomsBtn');
+  buildCC2Table();
+  renderContribs(); renderIncomeSummary(); renderExpenses(); renderStats(); drawAllCharts(); renderMemberReport(); renderTotalReport();
+  renderDerivedCashCount(); renderSavedSessions(); renderSettings(); renderRemittanceUI();
+  // Render attendance summary and statistics on load
+  renderAttendance();
+  toggleMemberPicker();
+  showPage('dashboard');
+}
+loadState();
+initDates();
+// Initialize authentication instead of directly loading the app.
+// initAuth() will show the login screen or proceed to initAfterLoad() when logged in.
+initAuth();
+</script>
+
+<!--
+  Supabase integration: optional cloud backup/restore.
+  This block loads the Supabase client library and defines
+  asynchronous functions to save and load the current application
+  state to and from your Supabase database.  When the user
+  clicks either cloud button they will be prompted for their
+  Supabase email and password.  The application continues to
+  function normally if the user cancels or if Supabase is not
+  configured.
+-->
+<script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+<script>
+window.addEventListener('load', () => {
+  // Set your Supabase project URL and anonymous key here.  These
+  // values were provided by the user when setting up the cloud
+  // integration.  If they are incorrect the cloud features will
+  // fail silently and the rest of the app will still work.
+  const SUPABASE_URL = "https://npldrqufjgjfqeqoagft.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbGRycXVmamdqZnFlcW9hZ2Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NTI0MjcsImV4cCI6MjA3MjEyODQyN30.qI71xwm7BzWdQijgSsiyiunAxw4zzOWu7EdZwwqJosA";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Prompt the user for credentials if they are not already logged in.
+  async function requireLogin() {
+    const { data: { user } } = await sb.auth.getUser();
+    if(user) return user;
+    const email = prompt('Enter your Supabase email to continue');
+    if(!email) throw new Error('Login cancelled');
+    const password = prompt('Enter your Supabase password');
+    if(!password) throw new Error('Login cancelled');
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ alert(error.message); throw error; }
+    const { data: { user: logged } } = await sb.auth.getUser();
+    return logged;
+  }
+
+  // Upload current state to Supabase.  The upsert ensures that
+  // subsequent backups replace the previous one for the same user.
+  async function backupToCloud() {
+    try {
+      const user = await requireLogin();
+      const payload = { user_id: user.id, state: state };
+      const { error } = await sb.from('app_state').upsert(payload);
+      if(error) throw error;
+      alert('Backup saved to cloud successfully.');
+    } catch(err) {
+      console.error(err);
+    }
+  }
+
+  // Download state from Supabase and merge into the current state.
+  async function loadFromCloud() {
+    try {
+      const user = await requireLogin();
+      const { data, error } = await sb.from('app_state').select('state').eq('user_id', user.id).single();
+      if(error && error.code !== 'PGRST116') throw error;
+      if(data && data.state){
+        state.members = data.state.members || [];
+        state.contribs = data.state.contribs || [];
+        state.expenses = data.state.expenses || [];
+        state.attendance = data.state.attendance || [];
+        state.settings = Object.assign(state.settings, data.state.settings || {});
+        state.hero = data.state.hero || '';
+        state.cashcounts = data.state.cashcounts || [];
+        state.remits = data.state.remits || [];
+        saveState(); initAfterLoad();
+        alert('Data loaded from cloud successfully.');
+      } else {
+        alert('No saved data found in the cloud for this user.');
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  }
+
+  // Attach our handlers to the buttons we added to the header.
+  const cbk = document.getElementById('cloudBackupBtn');
+  const clk = document.getElementById('cloudLoadBtn');
+  if(cbk) cbk.addEventListener('click', backupToCloud);
+  if(clk) clk.addEventListener('click', loadFromCloud);
+});
+</script>
+</body>
+</html>
